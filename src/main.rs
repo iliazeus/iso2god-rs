@@ -2,7 +2,7 @@
 
 use std::env;
 
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufReader, BufWriter, Read, Seek, Write};
 
 use std::fs;
 use std::fs::File;
@@ -25,24 +25,14 @@ fn main() {
     run(source_iso, dest_dir);
 }
 
-// fn main() {
-//     let source_iso = Path::new("/home/iliazeus/Downloads/complex-catherine.iso");
-//     let dest_dir = Path::new("/home/iliazeus/Downloads/GOD/");
-
-//     run(source_iso, dest_dir);
-// }
-
 fn run(source_iso: &Path, dest_dir: &Path) {
     println!("extracting ISO metadata");
 
-    let source_iso_file = File::options()
-        .read(true)
-        .open(source_iso)
-        .expect("error opening source ISO file");
+    let source_iso_file =
+        open_file_for_buffered_reading(source_iso).expect("error opening source ISO file");
 
-    let source_iso_file_meta = source_iso_file
-        .metadata()
-        .expect("error reading source ISO file metadata");
+    let source_iso_file_meta =
+        fs::metadata(source_iso).expect("error reading source ISO file metadata");
 
     let mut source_iso =
         iso::IsoReader::read(BufReader::new(source_iso_file)).expect("error reading source ISO");
@@ -88,13 +78,8 @@ fn run(source_iso: &Path, dest_dir: &Path) {
 
         let part_file = file_layout.part_file_path(part_index);
 
-        let part_file = File::options()
-            .create(true)
-            .write(true)
-            .open(part_file)
-            .expect("error creating part file");
-
-        let mut part_file = BufWriter::new(part_file);
+        let mut part_file =
+            open_file_for_buffered_writing(&part_file).expect("error creating part file");
 
         god::write_part(&mut source_iso, &mut part_file).expect("error writing part file");
     }
@@ -115,8 +100,7 @@ fn run(source_iso: &Path, dest_dir: &Path) {
         mht = prev_mht;
     }
 
-    let last_part_size = File::open(file_layout.part_file_path(part_count - 1))
-        .and_then(|f| f.metadata())
+    let last_part_size = fs::metadata(file_layout.part_file_path(part_count - 1))
         .map(|m| m.len())
         .expect("error reading part file");
 
@@ -133,10 +117,7 @@ fn run(source_iso: &Path, dest_dir: &Path) {
         .with_mht_hash(&mht.digest())
         .finalize();
 
-    let mut con_header_file = File::options()
-        .create(true)
-        .write(true)
-        .open(file_layout.con_header_file_path())
+    let mut con_header_file = open_file_for_buffered_writing(&file_layout.con_header_file_path())
         .expect("cannot open con header file");
 
     con_header_file
@@ -169,4 +150,16 @@ fn write_part_mht(
     let mut part_file = File::options().write(true).open(part_file)?;
     mht.write(&mut part_file)?;
     Ok(())
+}
+
+fn open_file_for_buffered_writing(path: &Path) -> Result<impl Write + Seek, Error> {
+    let file = File::options().create(true).write(true).open(path)?;
+    let file = BufWriter::with_capacity(8 * 1024 * 1024, file);
+    Ok(file)
+}
+
+fn open_file_for_buffered_reading(path: &Path) -> Result<impl Read + Seek, Error> {
+    let file = File::options().read(true).open(path)?;
+    let file = BufReader::with_capacity(8 * 1024 * 1024, file);
+    Ok(file)
 }
