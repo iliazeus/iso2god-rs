@@ -1,28 +1,37 @@
 #![feature(fs_try_exists)]
 
-use std::env;
-
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
 
 use std::fs;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use num::integer::div_ceil;
 
 use anyhow::Error;
 
-use iso2god_rs::{god, iso, xex};
+use clap::{AppSettings, Parser};
 
-const USAGE: &'static str = "USAGE: iso2god <source_iso> <dest_dir>";
+use iso2god::{god, iso, xex};
+
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+#[clap(global_setting(AppSettings::ColorNever))]
+#[clap(global_setting(AppSettings::DeriveDisplayOrder))]
+struct Cli {
+    /// Xbox 360 ISO file to convert
+    #[clap(value_parser)]
+    source_iso: PathBuf,
+
+    /// A folder to write resulting GOD files to
+    #[clap(value_parser)]
+    dest_dir: PathBuf,
+}
 
 fn main() {
-    let argv = env::args().collect::<Vec<_>>();
+    let cli = Cli::parse();
 
-    let source_iso = argv.get(1).map(Path::new).expect(USAGE);
-    let dest_dir = argv.get(2).map(Path::new).expect(USAGE);
-
-    run(source_iso, dest_dir);
+    run(&cli.source_iso, &cli.dest_dir);
 }
 
 fn run(source_iso: &Path, dest_dir: &Path) {
