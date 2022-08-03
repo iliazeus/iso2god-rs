@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use num::integer::div_ceil;
 
-use anyhow::Error;
+use anyhow::{bail, Context, Error};
 
 use clap::{AppSettings, Parser};
 
@@ -40,56 +40,60 @@ struct Cli {
     game_title: Option<String>,
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
     let args = Cli::parse();
 
     println!("extracting ISO metadata");
 
-    let source_iso_file =
-        open_file_for_buffered_reading(&args.source_iso).expect("error opening source ISO file");
+    let source_iso_file = open_file_for_buffered_reading(&args.source_iso)
+        .context("error opening source ISO file")?;
 
     let source_iso_file_meta =
-        fs::metadata(&args.source_iso).expect("error reading source ISO file metadata");
+        fs::metadata(&args.source_iso).context("error reading source ISO file metadata")?;
 
-    let mut source_iso =
-        iso::IsoReader::read(BufReader::new(source_iso_file)).expect("error reading source ISO");
+    let mut source_iso = iso::IsoReader::read(BufReader::new(source_iso_file))
+        .context("error reading source ISO")?;
 
     let mut default_xex = source_iso
         .get_entry(&"\\default.xex".into())
-        .expect("error reading source ISO")
-        .expect("default.xex file not found");
+        .context("error reading source ISO")?
+        .context("default.xex file not found")?;
 
     let default_xex_header =
-        xex::XexHeader::read(&mut default_xex).expect("error reading default.xex");
+        xex::XexHeader::read(&mut default_xex).context("error reading default.xex")?;
 
     let exe_info = default_xex_header
         .fields
         .execution_info
-        .expect("no execution info in default.xex header");
+        .context("no execution info in default.xex header")?;
 
     let unity_title_info = if args.offline {
         None
     } else {
         println!(
-            "Querying XboxUnity for title ID {}",
+            "querying XboxUnity for title ID {}",
             hex::encode_upper(exe_info.title_id)
         );
 
-        let client = unity::Client::new().expect("error creating XboxUnity client");
+        let client = unity::Client::new().context("error creating XboxUnity client")?;
 
         client
             .find_xbox_360_title_id(&exe_info.title_id)
-            .expect("error querying XboxUnity; try --offline flag")
+            .context("error querying XboxUnity; try --offline flag")?
     };
 
     if let Some(unity_title_info) = &unity_title_info {
         println!("\n{}\n", unity_title_info);
-    } else {
-        println!("No XboxUnity title info available");
-    }
 
-    if args.dry_run {
-        return;
+        if args.dry_run {
+            return Ok(());
+        }
+    } else {
+        if args.dry_run {
+            bail!("no XboxUnity title info available");
+        } else {
+            println!("no XboxUnity title info available");
+        }
     }
 
     // TODO: cropping
@@ -107,9 +111,9 @@ fn main() {
 
     println!("clearing data directory");
 
-    ensure_empty_dir(&file_layout.data_dir_path()).expect("error clearing data directory");
+    ensure_empty_dir(&file_layout.data_dir_path()).context("error clearing data directory")?;
 
-    let mut source_iso = source_iso.get_root().expect("error reading source iso");
+    let mut source_iso = source_iso.get_root().context("error reading source iso")?;
 
     println!("writing part files");
 
@@ -119,30 +123,31 @@ fn main() {
         let part_file = file_layout.part_file_path(part_index);
 
         let mut part_file =
-            open_file_for_buffered_writing(&part_file).expect("error creating part file");
+            open_file_for_buffered_writing(&part_file).context("error creating part file")?;
 
-        god::write_part(&mut source_iso, &mut part_file).expect("error writing part file");
+        god::write_part(&mut source_iso, &mut part_file).context("error writing part file")?;
     }
 
     println!("calculating MHT hash chain");
 
-    let mut mht = read_part_mht(&file_layout, part_count - 1).expect("error reading part file MHT");
+    let mut mht =
+        read_part_mht(&file_layout, part_count - 1).context("error reading part file MHT")?;
 
     for prev_part_index in (0..part_count - 1).rev() {
         let mut prev_mht =
-            read_part_mht(&file_layout, prev_part_index).expect("error reading part file MHT");
+            read_part_mht(&file_layout, prev_part_index).context("error reading part file MHT")?;
 
         prev_mht.add_hash(&mht.digest());
 
         write_part_mht(&file_layout, prev_part_index, &prev_mht)
-            .expect("error writing part file MHT");
+            .context("error writing part file MHT")?;
 
         mht = prev_mht;
     }
 
     let last_part_size = fs::metadata(file_layout.part_file_path(part_count - 1))
         .map(|m| m.len())
-        .expect("error reading part file");
+        .context("error reading part file")?;
 
     println!("writing con header");
 
@@ -165,13 +170,15 @@ fn main() {
     let con_header = con_header.finalize();
 
     let mut con_header_file = open_file_for_buffered_writing(&file_layout.con_header_file_path())
-        .expect("cannot open con header file");
+        .context("cannot open con header file")?;
 
     con_header_file
         .write_all(&con_header)
-        .expect("error writing con header file");
+        .context("error writing con header file")?;
 
     println!("done");
+
+    Ok(())
 }
 
 fn ensure_empty_dir(path: &Path) -> Result<(), Error> {

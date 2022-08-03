@@ -473,7 +473,7 @@ checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 
 [[package]]
 name = "iso2god"
-version = "1.4.1"
+version = "1.4.3"
 dependencies = [
  "anyhow",
  "bitflags",

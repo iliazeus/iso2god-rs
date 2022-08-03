@@ -55,7 +55,7 @@ impl fmt::Display for Title {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "    Type: {}", self.title_type)?;
         writeln!(f, "Title ID: {}", self.title_id)?;
-        writeln!(f, "    Name: {}", self.name)
+        write!(f, "    Name: {}", self.name)
     }
 }
 
