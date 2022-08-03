@@ -1,6 +1,6 @@
 [package]
 name = "iso2god"
-version = "1.4.0"
+version = "1.4.1"
 description = "A tool to convert between Xbox 360 ISO and Games On Demand file formats"
 edition = "2021"
 
