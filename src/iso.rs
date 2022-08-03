@@ -20,9 +20,6 @@ pub struct IsoReader<R: Read + Seek> {
 impl<R: Read + Seek> IsoReader<R> {
     pub fn read(mut reader: R) -> Result<IsoReader<R>, Error> {
         let volume_descriptor = VolumeDescriptor::read(&mut reader)?;
-
-        println!("{:#?}", volume_descriptor);
-
         let directory_table = DirectoryTable::read_root(&mut reader, &volume_descriptor)?;
 
         Ok(IsoReader {

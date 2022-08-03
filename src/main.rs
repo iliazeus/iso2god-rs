@@ -12,7 +12,9 @@ use anyhow::Error;
 
 use clap::{AppSettings, Parser};
 
-use iso2god::{god, iso, xex};
+use hex;
+
+use iso2god::{god, iso, unity, xex};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -20,15 +22,21 @@ use iso2god::{god, iso, xex};
 #[clap(global_setting(AppSettings::DeriveDisplayOrder))]
 struct Cli {
     /// Xbox 360 ISO file to convert
-    #[clap(value_parser)]
     source_iso: PathBuf,
 
     /// A folder to write resulting GOD files to
-    #[clap(value_parser)]
     dest_dir: PathBuf,
 
+    /// Do not query XboxUnity for title info
+    #[clap(long)]
+    offline: bool,
+
+    /// Do not convert anything, just query the title info
+    #[clap(long)]
+    dry_run: bool,
+
     /// Set game title
-    #[clap(long, value_parser)]
+    #[clap(long)]
     game_title: Option<String>,
 }
 
@@ -54,7 +62,35 @@ fn main() {
     let default_xex_header =
         xex::XexHeader::read(&mut default_xex).expect("error reading default.xex");
 
-    println!("{:#?}", default_xex_header);
+    let exe_info = default_xex_header
+        .fields
+        .execution_info
+        .expect("no execution info in default.xex header");
+
+    let unity_title_info = if args.offline {
+        None
+    } else {
+        println!(
+            "Querying XboxUnity for title ID {}",
+            hex::encode_upper(exe_info.title_id)
+        );
+
+        let client = unity::Client::new().expect("error creating XboxUnity client");
+
+        client
+            .find_xbox_360_title_id(&exe_info.title_id)
+            .expect("error querying XboxUnity; try --offline flag")
+    };
+
+    if let Some(unity_title_info) = &unity_title_info {
+        println!("\n{}\n", unity_title_info);
+    } else {
+        println!("No XboxUnity title info available");
+    }
+
+    if args.dry_run {
+        return;
+    }
 
     // TODO: cropping
 
@@ -63,11 +99,6 @@ fn main() {
 
     let block_count = div_ceil(iso_file_size - root_offset, god::BLOCK_SIZE as u64);
     let part_count = div_ceil(block_count, god::BLOCKS_PER_PART);
-
-    let exe_info = default_xex_header
-        .fields
-        .execution_info
-        .expect("no execution info in default.xex header");
 
     // the original code does not seem to support other types
     let content_type = god::ContentType::GamesOnDemand;
@@ -83,7 +114,7 @@ fn main() {
     println!("writing part files");
 
     for part_index in 0..part_count {
-        println!(".");
+        println!("writing part {:2} of {:2}", part_index, part_count);
 
         let part_file = file_layout.part_file_path(part_index);
 
@@ -125,7 +156,9 @@ fn main() {
         .with_content_type(god::ContentType::GamesOnDemand)
         .with_mht_hash(&mht.digest());
 
-    if let Some(game_title) = args.game_title {
+    if let Some(unity_title_info) = &unity_title_info {
+        con_header = con_header.with_game_title(&unity_title_info.name);
+    } else if let Some(game_title) = args.game_title {
         con_header = con_header.with_game_title(&game_title);
     }
 
