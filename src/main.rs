@@ -26,22 +26,22 @@ struct Cli {
     /// A folder to write resulting GOD files to
     #[clap(value_parser)]
     dest_dir: PathBuf,
+
+    /// Set game title
+    #[clap(long, value_parser)]
+    game_title: Option<String>,
 }
 
 fn main() {
-    let cli = Cli::parse();
+    let args = Cli::parse();
 
-    run(&cli.source_iso, &cli.dest_dir);
-}
-
-fn run(source_iso: &Path, dest_dir: &Path) {
     println!("extracting ISO metadata");
 
     let source_iso_file =
-        open_file_for_buffered_reading(source_iso).expect("error opening source ISO file");
+        open_file_for_buffered_reading(&args.source_iso).expect("error opening source ISO file");
 
     let source_iso_file_meta =
-        fs::metadata(source_iso).expect("error reading source ISO file metadata");
+        fs::metadata(&args.source_iso).expect("error reading source ISO file metadata");
 
     let mut source_iso =
         iso::IsoReader::read(BufReader::new(source_iso_file)).expect("error reading source ISO");
@@ -72,7 +72,7 @@ fn run(source_iso: &Path, dest_dir: &Path) {
     // the original code does not seem to support other types
     let content_type = god::ContentType::GamesOnDemand;
 
-    let file_layout = god::FileLayout::new(dest_dir, &exe_info, content_type);
+    let file_layout = god::FileLayout::new(&args.dest_dir, &exe_info, content_type);
 
     println!("clearing data directory");
 
@@ -115,7 +115,7 @@ fn run(source_iso: &Path, dest_dir: &Path) {
 
     println!("writing con header");
 
-    let con_header = god::ConHeaderBuilder::new()
+    let mut con_header = god::ConHeaderBuilder::new()
         .with_execution_info(&exe_info)
         .with_block_counts(block_count as u32, 0)
         .with_data_parts_info(
@@ -123,8 +123,13 @@ fn run(source_iso: &Path, dest_dir: &Path) {
             last_part_size + (part_count - 1) * (god::BLOCK_SIZE as u64) * 0xa290,
         )
         .with_content_type(god::ContentType::GamesOnDemand)
-        .with_mht_hash(&mht.digest())
-        .finalize();
+        .with_mht_hash(&mht.digest());
+
+    if let Some(game_title) = args.game_title {
+        con_header = con_header.with_game_title(&game_title);
+    }
+
+    let con_header = con_header.finalize();
 
     let mut con_header_file = open_file_for_buffered_writing(&file_layout.con_header_file_path())
         .expect("cannot open con header file");
