@@ -1,7 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use sha1::{Digest, Sha1};
-
 use hex;
 
 use crate::xex;
@@ -27,25 +25,15 @@ impl<'a> FileLayout<'a> {
         }
     }
 
-    // TODO: why so complicated?
-    fn get_unique_name(&self) -> String {
-        let mut bytes = [0_u8; 10];
-
-        bytes[0..4].copy_from_slice(&self.exe_info.title_id);
-        bytes[4..8].copy_from_slice(&self.exe_info.media_id);
-        bytes[8] = self.exe_info.disc_number;
-        bytes[9] = self.exe_info.disc_count;
-
-        let hash: [u8; 20] = Sha1::digest(bytes).into();
-
-        hex::encode_upper(hash)
+    fn title_id_string(&self) -> String {
+        hex::encode_upper(self.exe_info.title_id)
     }
 
     pub fn data_dir_path(&self) -> PathBuf {
         self.base_path
             .join(hex::encode_upper(self.exe_info.title_id))
             .join(format!("{:08X}", self.content_type as u32))
-            .join(self.get_unique_name() + ".data")
+            .join(self.title_id_string() + ".data")
     }
 
     pub fn part_file_path(&'a self, part_index: u64) -> PathBuf {
@@ -56,6 +44,6 @@ impl<'a> FileLayout<'a> {
         self.base_path
             .join(hex::encode_upper(self.exe_info.title_id))
             .join(format!("{:08X}", self.content_type as u32))
-            .join(self.get_unique_name())
+            .join(self.title_id_string())
     }
 }
