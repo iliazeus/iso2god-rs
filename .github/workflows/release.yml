@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish-to-github:
+    name: Publish to Github
+    runs-on: ${{matrix.os}}
+
+    strategy:
+      matrix:
+        include:
+          - build: linux
+            os: ubuntu-latest
+            rust: nightly
+            target: x86_64-unknown-linux-gnu
+
+          - build: macos
+            os: macos-latest
+            rust: nightly
+            target: x86_64-apple-darwin
+
+          - build: windows
+            os: windows-latest
+            rust: nightly
+            target: x86_64-pc-windows-gnu
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.rustup
+            target
+          key: ${{ runner.os }}-${{ matrix.rust }}
+
+      - name: Install Rust
+        run: |
+          rustup default ${{ matrix.rust }}
+          rustup target add ${{ matrix.target }}
+          rustup show
+
+      - name: Build
+        run: cargo build -Z unstable-options --release --target ${{ matrix.target }} --bin iso2god --out-dir out
+
+      - name: Rename Mac OS binary
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: mv out/iso2god out/iso2god-macos
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            out/*
+          fail_on_unmatched_files: false
