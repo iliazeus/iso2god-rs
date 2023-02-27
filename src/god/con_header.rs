@@ -12,6 +12,7 @@ pub struct ConHeaderBuilder {
     buffer: Vec<u8>,
 }
 
+#[derive(Clone, Copy)]
 pub enum ContentType {
     GamesOnDemand = 0x7000,
     XboxOriginal = 0x5000,
