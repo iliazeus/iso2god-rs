@@ -67,6 +67,9 @@ pub enum TitleType {
     #[serde(rename = "360")]
     Xbox360,
 
+    #[serde(rename = "XBLA")]
+    Xbla,
+
     Xbox1,
 }
 
@@ -75,6 +78,7 @@ impl fmt::Display for TitleType {
         match self {
             Self::Xbox => write!(f, "Xbox title"),
             Self::Xbox360 => write!(f, "Xbox 360 title"),
+            Self::Xbla => write!(f, "Xbox Live Arcade title"),
             Self::Xbox1 => write!(f, "Xbox One title"),
         }
     }
@@ -128,11 +132,17 @@ impl Client {
 
         let title_list = self.search(&title_id)?;
 
-        let title = title_list
+        let best_title = title_list
             .items
             .into_iter()
-            .find(|title| title.title_type == TitleType::Xbox360 && title.title_id == title_id);
+            .filter(|t| t.title_id == title_id)
+            .filter(|t| t.title_type == TitleType::Xbox360 || t.title_type == TitleType::Xbla)
+            .min_by_key(|t| match t.title_type {
+                TitleType::Xbox360 => 0,
+                TitleType::Xbla => 1,
+                _ => 2,
+            });
 
-        Ok(title)
+        Ok(best_title)
     }
 }
