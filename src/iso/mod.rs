@@ -62,6 +62,7 @@ pub struct WindowsPath {
     pub components: Vec<String>,
 }
 
+/// Case-insensitive (ascii case, for simplicity). Uses `\` as separator.
 impl<'a, S: Into<&'a str>> From<S> for WindowsPath {
     fn from(path: S) -> WindowsPath {
         let path: &'a str = path.into();

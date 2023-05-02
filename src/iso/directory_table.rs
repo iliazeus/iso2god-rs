@@ -80,7 +80,9 @@ impl DirectoryTable {
     }
 
     pub fn get_entry(&self, name: &str) -> Option<&DirectoryEntry> {
-        self.entries.iter().find(|e| e.name == name)
+        self.entries
+            .iter()
+            .find(|e| e.name.eq_ignore_ascii_case(name))
     }
 }
 
