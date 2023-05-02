@@ -15,6 +15,7 @@ pub struct XexHeader {
 }
 
 bitflags! {
+    #[derive(Clone, Copy, PartialEq, Eq, Debug)]
     pub struct XexModuleFlags: u32 {
         const DLL_MODULE = 0x08;
         const EXPORTS_TO_TITLE = 0x02;

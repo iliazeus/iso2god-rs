@@ -10,16 +10,15 @@ use num::integer::div_ceil;
 
 use anyhow::{bail, Context, Error};
 
-use clap::{AppSettings, Parser};
+use clap::{arg, command, Parser};
 
 use hex;
 
 use iso2god::{god, iso, unity, xex};
 
 #[derive(Parser)]
-#[clap(author, version, about, long_about = None)]
-#[clap(global_setting(AppSettings::ColorNever))]
-#[clap(global_setting(AppSettings::DeriveDisplayOrder))]
+#[command(author, version, about, long_about = None)]
+#[command(color = clap::ColorChoice::Never)]
 struct Cli {
     /// Xbox 360 ISO file to convert
     source_iso: PathBuf,
@@ -28,15 +27,15 @@ struct Cli {
     dest_dir: PathBuf,
 
     /// Do not query XboxUnity for title info
-    #[clap(long)]
+    #[arg(long)]
     offline: bool,
 
     /// Do not convert anything, just query the title info
-    #[clap(long)]
+    #[arg(long)]
     dry_run: bool,
 
     /// Set game title
-    #[clap(long)]
+    #[arg(long)]
     game_title: Option<String>,
 }
 

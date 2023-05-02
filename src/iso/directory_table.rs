@@ -26,6 +26,7 @@ pub struct DirectoryEntry {
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct DirectoryEntryAttributes: u8 {
         const ARCHIVE = 0x20;
         const DIRECTORY = 0x10;
