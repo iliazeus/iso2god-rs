@@ -6,8 +6,8 @@ pub mod directory_table;
 pub mod iso_type;
 pub mod volume_descriptor;
 
-use directory_table::*;
-use volume_descriptor::*;
+pub use directory_table::*;
+pub use volume_descriptor::*;
 
 pub const SECTOR_SIZE: u64 = 0x800;
 
