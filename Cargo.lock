@@ -661,7 +661,7 @@ dependencies = [
 
 [[package]]
 name = "iso2god"
-version = "1.4.6"
+version = "1.4.7"
 dependencies = [
  "anyhow",
  "bitflags 2.2.1",

@@ -4,6 +4,8 @@ use std::io::{Read, Seek, SeekFrom};
 
 use bitflags::bitflags;
 
+use num::integer::div_ceil;
+
 use anyhow::Error;
 
 use super::*;
@@ -56,19 +58,16 @@ impl DirectoryTable {
         sector: u32,
         size: u32,
     ) -> Result<DirectoryTable, Error> {
-        let initial_position = (sector as u64) * volume.sector_size + volume.root_offset;
-        let final_position = initial_position + (size as u64);
-
-        reader.seek(SeekFrom::Start(initial_position))?;
-
         let mut entries = Vec::<DirectoryEntry>::new();
 
-        while let Some(entry) = DirectoryEntry::read(reader, volume)? {
-            entries.push(entry);
+        let sector_count = div_ceil(size, SECTOR_SIZE as u32);
+        for sector_index in 0..sector_count {
+            let sector_position =
+                ((sector + sector_index) as u64) * volume.sector_size + volume.root_offset;
+            reader.seek(SeekFrom::Start(sector_position))?;
 
-            // TODO: do we need the additional condition?
-            if reader.stream_position()? >= final_position {
-                break;
+            while let Some(entry) = DirectoryEntry::read(reader, volume)? {
+                entries.push(entry);
             }
         }
 
