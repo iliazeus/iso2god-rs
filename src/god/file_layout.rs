@@ -29,11 +29,19 @@ impl<'a> FileLayout<'a> {
         hex::encode_upper(self.exe_info.title_id)
     }
 
+    fn content_type_string(&self) -> String {
+        format!("{:08X}", self.content_type as u32)
+    }
+
+    fn media_id_string(&self) -> String {
+        hex::encode_upper(self.exe_info.media_id)
+    }
+
     pub fn data_dir_path(&self) -> PathBuf {
         self.base_path
-            .join(hex::encode_upper(self.exe_info.title_id))
-            .join(format!("{:08X}", self.content_type as u32))
-            .join(self.title_id_string() + ".data")
+            .join(self.title_id_string())
+            .join(self.content_type_string())
+            .join(self.media_id_string() + ".data")
     }
 
     pub fn part_file_path(&'a self, part_index: u64) -> PathBuf {
@@ -42,8 +50,8 @@ impl<'a> FileLayout<'a> {
 
     pub fn con_header_file_path(&self) -> PathBuf {
         self.base_path
-            .join(hex::encode_upper(self.exe_info.title_id))
-            .join(format!("{:08X}", self.content_type as u32))
             .join(self.title_id_string())
+            .join(self.content_type_string())
+            .join(self.media_id_string())
     }
 }
