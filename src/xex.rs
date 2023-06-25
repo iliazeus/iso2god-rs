@@ -3,6 +3,7 @@ use std::io::{Read, Seek, SeekFrom};
 use byteorder::{ReadBytesExt, BE};
 
 use bitflags::bitflags;
+use num_enum::TryFromPrimitive;
 
 use anyhow::{bail, Error};
 
@@ -15,51 +16,62 @@ pub struct XexHeader {
 }
 
 bitflags! {
+    // based on https://free60.org/System-Software/Formats/XEX/#xex-header
     #[derive(Clone, Copy, PartialEq, Eq, Debug)]
     pub struct XexModuleFlags: u32 {
-        const DLL_MODULE = 0x08;
-        const EXPORTS_TO_TITLE = 0x02;
-        const MODULE_PATCH = 0x10;
-        const SYSTEM_DEBUGGER = 0x04;
         const TITLE_MODULE = 0x01;
-
-        // TODO: WTF: original code is ((Address & 1) == 0x40); isn't that impossible?
-        const DELTA_PATCH = 0;
-
-        // TODO: WTF: original code is ((Address & 1) == 0x20); isn't that impossible?
-        const FULL_PATCH = 0;
-
-        // TODO: WTF: original code is ((Address & 1) == 0x80); isn't that impossible?
-        const USER_MODE = 0;
+        const EXPORTS_TO_TITLE = 0x02;
+        const SYSTEM_DEBUGGER = 0x04;
+        const DLL_MODULE = 0x08;
+        const MODULE_PATCH = 0x10;
+        const FULL_PATCH = 0x20;
+        const DELTA_PATCH = 0x40;
+        const USER_MODE = 0x80;
     }
 }
 
 #[derive(Clone, Default, Debug)]
 pub struct XexHeaderFields {
-    pub resource_info: Option<u32>,
-    pub compression_info: Option<u32>,
     pub execution_info: Option<XexExecutionInfo>,
-    pub base_file_format: Option<u32>,
-    pub base_file_timestamp: Option<u32>,
-    pub original_name: Option<u32>,
-    pub ratings_info: Option<u32>,
-    pub system_flags: Option<u32>,
+    // other fields will be added if and when necessary
 }
 
-mod sig {
-    // some values repeat, just like in original code
-
-    pub const BASE_FILE_FORMAT: u32 = 0x_00_00_03_ff;
-    pub const BASE_FILE_TIMESTAMP: u32 = 0x_00_01_80_02;
-    pub const COMPRESSION_INFO: u32 = 0x_00_00_03_ff;
-    pub const EXECUTION_INFO: u32 = 0x_00_04_00_06;
-    pub const MODULE_FLAGS: u32 = 0x_00_00_00_03;
-    pub const ORIGINAL_NAME: u32 = 0x_00_01_83_ff;
-    pub const RATINGS_INFO: u32 = 0x_00_04_03_10;
-    pub const RESOURCE_INFO: u32 = 0x_00_00_02_ff;
-
-    #[allow(dead_code)]
-    pub const SYSTEM_FLAGS: u32 = 0x_00_00_00_03;
+// based on https://free60.org/System-Software/Formats/XEX/#header-ids
+#[repr(u32)]
+#[derive(Clone, Debug, PartialEq, Eq, TryFromPrimitive)]
+#[allow(dead_code)]
+enum XexHeaderFieldId {
+    ResourceInfo = 0x_00_00_02_ff,
+    BaseFileFormat = 0x_00_00_03_ff,
+    BaseReference = 0x_00_00_04_05,
+    DeltaPatchDescriptor = 0x_00_00_05_ff,
+    BoundingPath = 0x_00_00_80_ff,
+    DeviceId = 0x_00_00_81_05,
+    OriginalBaseAddress = 0x_00_01_00_01,
+    EntryPoint = 0x_00_01_01_00,
+    ImageBaseAddress = 0x_00_01_02_01,
+    ImportLibraries = 0x_00_01_03_ff,
+    ChecksumTimestamp = 0x_00_01_80_02,
+    EnabledForCallcap = 0x_00_01_81_02,
+    EnabledForFastcap = 0x_00_01_82_00,
+    OriginalPeName = 0x_00_01_83_ff,
+    StaticLibraries = 0x_00_02_00_ff,
+    TlsInfo = 0x_00_02_01_04,
+    DefaultStackSize = 0x_00_02_02_00,
+    DefaultFilesystemCacheSize = 0x_00_02_03_01,
+    DefaultHeapSize = 0x_00_02_04_01,
+    PageHeapSizeAndFlags = 0x_00_02_80_02,
+    SystemFlags = 0x_00_03_00_00,
+    ExecutionId = 0x_00_04_00_06,
+    ServiceIdList = 0x_00_04_01_ff,
+    TitleWorkspaceSize = 0x_00_04_02_01,
+    GameRatings = 0x_00_04_03_10,
+    LanKey = 0x_00_04_04_04,
+    Xbox360Logo = 0x_00_04_05_ff,
+    MultidiscMediaIds = 0x_00_04_06_ff,
+    AlternateTitleIds = 0x_00_04_07_ff,
+    AdditionalTitleMemory = 0x_00_04_08_01,
+    ExportsByName = 0x_00_e1_04_02,
 }
 
 #[derive(Clone, Debug)]
@@ -114,26 +126,16 @@ impl XexHeader {
             let key = reader.read_u32::<BE>()?;
             let value = reader.read_u32::<BE>()?;
 
-            // some values repeat, just like in original code
-            #[allow(unreachable_patterns)]
-            match key {
-                sig::RESOURCE_INFO => fields.resource_info = Some(value),
-                sig::COMPRESSION_INFO => fields.compression_info = Some(value),
+            let key = XexHeaderFieldId::try_from(key).ok();
+            type Key = XexHeaderFieldId;
 
-                sig::EXECUTION_INFO => {
+            match key {
+                Some(Key::ExecutionId) => {
                     let offset = reader.stream_position()?;
                     reader.seek(SeekFrom::Start(header_offset + (value as u64)))?;
                     fields.execution_info = Some(XexExecutionInfo::read(reader)?);
                     reader.seek(SeekFrom::Start(offset))?;
                 }
-
-                sig::BASE_FILE_FORMAT => fields.base_file_format = Some(value),
-                sig::BASE_FILE_TIMESTAMP => fields.base_file_timestamp = Some(value),
-                sig::ORIGINAL_NAME => fields.original_name = Some(value),
-                sig::RATINGS_INFO => fields.ratings_info = Some(value),
-
-                // sic! is this an oversight?
-                sig::MODULE_FLAGS => fields.system_flags = Some(value),
 
                 _ => {}
             };
