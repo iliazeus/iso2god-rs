@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use reqwest::blocking as http;
 use serde::Deserialize;
 use serde_aux::prelude::*;
@@ -71,6 +73,7 @@ pub enum TitleType {
     Xbla,
 
     Xbox1,
+    HomeBrew,
 }
 
 impl fmt::Display for TitleType {
@@ -80,6 +83,7 @@ impl fmt::Display for TitleType {
             Self::Xbox360 => write!(f, "Xbox 360 title"),
             Self::Xbla => write!(f, "Xbox Live Arcade title"),
             Self::Xbox1 => write!(f, "Xbox One title"),
+            Self::HomeBrew => write!(f, "Homebrew title"),
         }
     }
 }
@@ -136,7 +140,6 @@ impl Client {
             .items
             .into_iter()
             .filter(|t| t.title_id == title_id)
-            .filter(|t| t.title_type == TitleType::Xbox360 || t.title_type == TitleType::Xbla)
             .min_by_key(|t| match t.title_type {
                 TitleType::Xbox360 => 0,
                 TitleType::Xbla => 1,

@@ -6,13 +6,11 @@ use std::path::{Path, PathBuf};
 
 use num::integer::div_ceil;
 
-use anyhow::{bail, Context, Error};
+use anyhow::{Context, Error};
 
 use clap::{arg, command, Parser};
 
-use hex;
-
-use iso2god::{god, iso, unity, xex};
+use iso2god::{game_list, god, iso, xex};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -24,11 +22,11 @@ struct Cli {
     /// A folder to write resulting GOD files to
     dest_dir: PathBuf,
 
-    /// Do not query XboxUnity for title info
-    #[arg(long)]
+    #[arg(long, hide = true)]
+    #[deprecated(since = "1.5.0", note = "now uses a built-in database")]
     offline: bool,
 
-    /// Do not convert anything, just query the title info
+    /// Do not convert anything, just print the title info
     #[arg(long)]
     dry_run: bool,
 
@@ -39,6 +37,11 @@ struct Cli {
 
 fn main() -> Result<(), Error> {
     let args = Cli::parse();
+
+    #[allow(deprecated)]
+    if args.offline {
+        eprintln!("the --offline flag is deprecated: the tool now has a built-in title database, so it is always offline");
+    }
 
     println!("extracting ISO metadata");
 
@@ -64,33 +67,14 @@ fn main() -> Result<(), Error> {
         .execution_info
         .context("no execution info in default.xex header")?;
 
-    let unity_title_info = if args.offline {
-        None
-    } else {
-        println!(
-            "querying XboxUnity for title ID {}",
-            hex::encode_upper(exe_info.title_id)
-        );
+    if args.dry_run {
+        let title_id = hex::encode_upper(exe_info.title_id);
+        let name = game_list::find_title_by_id(exe_info.title_id).unwrap_or("(unknown)".to_owned());
 
-        let client = unity::Client::new().context("error creating XboxUnity client")?;
+        println!("Title ID: {title_id}");
+        println!("    Name: {name}");
 
-        client
-            .find_xbox_360_title_id(&exe_info.title_id)
-            .context("error querying XboxUnity; try --offline flag")?
-    };
-
-    if let Some(unity_title_info) = &unity_title_info {
-        println!("\n{}\n", unity_title_info);
-
-        if args.dry_run {
-            return Ok(());
-        }
-    } else {
-        if args.dry_run {
-            bail!("no XboxUnity title info available");
-        } else {
-            println!("no XboxUnity title info available");
-        }
+        return Ok(());
     }
 
     // TODO: cropping
@@ -158,9 +142,10 @@ fn main() -> Result<(), Error> {
         .with_content_type(god::ContentType::GamesOnDemand)
         .with_mht_hash(&mht.digest());
 
-    if let Some(unity_title_info) = &unity_title_info {
-        con_header = con_header.with_game_title(&unity_title_info.name);
-    } else if let Some(game_title) = args.game_title {
+    let game_title = args
+        .game_title
+        .or(game_list::find_title_by_id(exe_info.title_id));
+    if let Some(game_title) = game_title {
         con_header = con_header.with_game_title(&game_title);
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "iso2god"
-version = "1.4.8"
+version = "1.5.0"
 description = "A tool to convert between Xbox 360 ISO and Games On Demand file formats"
 repository = "https://github.com/iliazeus/iso2god-rs"
 edition = "2021"
@@ -15,11 +15,13 @@ clap = { version = "4.5.9", features = ["derive"] }
 hex = "0.4.3"
 num = "0.4.3"
 num_enum = "0.7.2"
+sha1 = "0.10.6"
+
+[dev-dependencies]
 reqwest = { version = "0.12.5", features = ["blocking", "json"] }
 serde = { version = "1.0.204", features = ["derive"] }
 serde-aux = "4.5.0"
 serde_json = "1.0.120"
-sha1 = "0.10.6"
 
 [profile.release]
 strip = true
