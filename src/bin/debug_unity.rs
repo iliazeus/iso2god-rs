@@ -1,5 +1,3 @@
-#![feature(fs_try_exists)]
-
 use anyhow::{Context, Error};
 
 use clap::{command, Parser};

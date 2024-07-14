@@ -41,7 +41,14 @@ impl VolumeDescriptor {
         let mut image_creation_time = [0_u8; 8];
         reader.read_exact(&mut image_creation_time)?;
 
-        let volume_size = reader.stream_len()? - iso_type.root_offset();
+        let reader_len = {
+            let cur = reader.seek(SeekFrom::Current(0))?;
+            let end = reader.seek(SeekFrom::End(0))?;
+            reader.seek(SeekFrom::Start(cur))?;
+            end
+        };
+
+        let volume_size = reader_len - iso_type.root_offset();
         let volume_sectors = volume_size / SECTOR_SIZE;
 
         Ok(VolumeDescriptor {

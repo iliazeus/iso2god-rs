@@ -91,7 +91,7 @@ pub struct Client {
 impl Client {
     pub fn new() -> Result<Client, Error> {
         let client = http::Client::builder()
-            .connect_timeout(10 * Duration::SECOND)
+            .connect_timeout(Duration::from_secs(10))
             .user_agent(format!(
                 "{} / {} {}",
                 env!("CARGO_PKG_NAME"),

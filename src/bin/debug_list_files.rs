@@ -1,5 +1,3 @@
-#![feature(fs_try_exists)]
-
 use std::io::{BufReader, Read, Seek};
 
 use std::fs::File;

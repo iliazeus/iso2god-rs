@@ -1,5 +1,3 @@
-#![feature(fs_try_exists)]
-
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
 
 use std::fs;
@@ -181,7 +179,7 @@ fn main() -> Result<(), Error> {
 }
 
 fn ensure_empty_dir(path: &Path) -> Result<(), Error> {
-    if fs::try_exists(path)? {
+    if fs::exists(path)? {
         fs::remove_dir_all(path)?;
     };
     fs::create_dir_all(path)?;
