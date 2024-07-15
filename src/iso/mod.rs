@@ -55,6 +55,23 @@ impl<R: Read + Seek> IsoReader<R> {
             Ok(None)
         }
     }
+
+    pub fn get_max_used_prefix_size(&self) -> u64 {
+        return rec(&self.directory_table);
+        fn rec(dir: &DirectoryTable) -> u64 {
+            dir.entries
+                .iter()
+                .map(|entry| {
+                    let mut v = (entry.sector as u64) * SECTOR_SIZE + (entry.size as u64);
+                    if let Some(subdir) = &entry.subdirectory {
+                        v = v.max(rec(subdir));
+                    }
+                    v
+                })
+                .max()
+                .unwrap_or(0)
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

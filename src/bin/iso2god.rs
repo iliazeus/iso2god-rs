@@ -33,6 +33,10 @@ struct Cli {
     /// Set game title
     #[arg(long)]
     game_title: Option<String>,
+
+    /// Trim off unused space from the ISO image
+    #[arg(long)]
+    trim: bool,
 }
 
 fn main() -> Result<(), Error> {
@@ -67,22 +71,26 @@ fn main() -> Result<(), Error> {
         .execution_info
         .context("no execution info in default.xex header")?;
 
-    if args.dry_run {
+    {
         let title_id = hex::encode_upper(exe_info.title_id);
         let name = game_list::find_title_by_id(exe_info.title_id).unwrap_or("(unknown)".to_owned());
 
         println!("Title ID: {title_id}");
         println!("    Name: {name}");
+    }
 
+    if args.dry_run {
         return Ok(());
     }
 
-    // TODO: cropping
+    let data_size = if args.trim {
+        source_iso.get_max_used_prefix_size()
+    } else {
+        let root_offset = source_iso.volume_descriptor.root_offset;
+        source_iso_file_meta.len() - root_offset
+    };
 
-    let iso_file_size = source_iso_file_meta.len();
-    let root_offset = source_iso.volume_descriptor.root_offset;
-
-    let block_count = div_ceil(iso_file_size - root_offset, god::BLOCK_SIZE as u64);
+    let block_count = div_ceil(data_size, god::BLOCK_SIZE as u64);
     let part_count = div_ceil(block_count, god::BLOCKS_PER_PART);
 
     // the original code does not seem to support other types
@@ -94,7 +102,10 @@ fn main() -> Result<(), Error> {
 
     ensure_empty_dir(&file_layout.data_dir_path()).context("error clearing data directory")?;
 
-    let mut source_iso = source_iso.get_root().context("error reading source iso")?;
+    let mut source_iso = source_iso
+        .get_root()
+        .context("error reading source iso")?
+        .take(data_size);
 
     println!("writing part files");
 

@@ -28,6 +28,9 @@ fn main() -> Result<(), Error> {
     let source_iso = iso::IsoReader::read(BufReader::new(source_iso_file))
         .context("error reading source ISO")?;
 
+    println!("{:?}", source_iso.volume_descriptor);
+    println!("max used size: {}", source_iso.get_max_used_prefix_size());
+
     print_dir(String::new(), &source_iso.directory_table);
 
     Ok(())
