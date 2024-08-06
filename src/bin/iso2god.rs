@@ -175,7 +175,7 @@ fn main() -> Result<(), Error> {
 }
 
 fn ensure_empty_dir(path: &Path) -> Result<(), Error> {
-    if fs::exists(path)? {
+    if path.exists() {
         fs::remove_dir_all(path)?;
     };
     fs::create_dir_all(path)?;
