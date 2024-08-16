@@ -13,42 +13,45 @@ env:
 
 jobs:
   publish-to-github:
-    name: Publish to Github
-    runs-on: ${{matrix.os}}
+    name: Build
+    runs-on: ${{matrix.runner}}
 
     strategy:
       matrix:
         include:
-          - build: linux
-            os: ubuntu-latest
+          - runner: ubuntu-latest
             rust: nightly
             target: x86_64-unknown-linux-gnu
+            filename: iso2god-x86_64-linux
 
-          - build: macos
-            os: macos-latest
+          - runner: macos-12
             rust: nightly
             target: x86_64-apple-darwin
+            filename: iso2god-x86_64-macos
 
-          - build: windows
-            os: windows-latest
+          - runner: macos-14
+            rust: nightly
+            target: aarch64-apple-darwin
+            filename: iso2god-aarch64-macos
+
+          - runner: windows-latest
             rust: nightly
             target: x86_64-pc-windows-gnu
+            filename: iso2god-x86_64-windows.exe
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
+        uses: actions/checkout@v4
 
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             ~/.rustup
             target
-          key: ${{ runner.os }}-${{ matrix.rust }}
+          key: ${{ matrix.rust }}-${{ matrix.target }}
 
       - name: Install Rust
         run: |
@@ -57,16 +60,14 @@ jobs:
           rustup show
 
       - name: Build
-        run: cargo build -Z unstable-options --release --target ${{ matrix.target }} --bin iso2god --out-dir out
-
-      - name: Rename Mac OS binary
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: mv out/iso2god out/iso2god-macos
+        run: |
+          cargo build -Z unstable-options --release --target ${{ matrix.target }} --bin iso2god --artifact-dir out
+          mv out/* out/${{ matrix.filename }}
 
       - name: Release
-        if: ${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          files: |
-            out/*
+          name: ${{ github.ref_name }}
+          draft: ${{ github.ref_type != 'tag' || !startsWith(github.ref_name, 'v') }}
+          files: out/*
           fail_on_unmatched_files: false
