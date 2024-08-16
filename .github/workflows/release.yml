@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - v*
+    branches:
+      - ci-*
+      - master
 
 env:
   CARGO_TERM_COLOR: always
@@ -61,6 +64,7 @@ jobs:
         run: mv out/iso2god out/iso2god-macos
 
       - name: Release
+        if: ${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') }}
         uses: softprops/action-gh-release@v1
         with:
           files: |
