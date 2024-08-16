@@ -389,7 +389,7 @@ const GAMES_BY_TITLE_ID: &[(u32, &'static str)] = &[
     (0x454108FC, "EA Sports MMA"),
     (0x454108FE, "Madden NFL 11"),
     (0x45410900, "NCAA Football 11"),
-    (0x4541090B, "Dragon Age II"),
+    (0x4541090B, "Dragon Age 2"),
     (0x4541090C, "Hasbro Family Game Night 3"),
     (0x45410911, "EA Sports Active 2"),
     (0x45410912, "Portal 2"),
