@@ -20,24 +20,28 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-latest
-            rust: nightly
+            rust: 1.81.0
             target: x86_64-unknown-linux-gnu
-            filename: iso2god-x86_64-linux
+            build_filename: iso2god
+            release_filename: iso2god-x86_64-linux
 
           - runner: macos-12
-            rust: nightly
+            rust: 1.81.0
             target: x86_64-apple-darwin
-            filename: iso2god-x86_64-macos
+            build_filename: iso2god
+            release_filename: iso2god-x86_64-macos
 
           - runner: macos-14
-            rust: nightly
+            rust: 1.81.0
             target: aarch64-apple-darwin
-            filename: iso2god-aarch64-macos
+            build_filename: iso2god
+            release_filename: iso2god-aarch64-macos
 
           - runner: windows-latest
-            rust: nightly
+            rust: 1.81.0
             target: x86_64-pc-windows-gnu
-            filename: iso2god-x86_64-windows.exe
+            build_filename: iso2god.exe
+            release_filename: iso2god-x86_64-windows.exe
 
     steps:
       - name: Checkout repository
@@ -61,8 +65,9 @@ jobs:
 
       - name: Build
         run: |
-          cargo build -Z unstable-options --release --target ${{ matrix.target }} --bin iso2god --artifact-dir out
-          mv out/* out/${{ matrix.filename }}
+          cargo build --release --target ${{ matrix.target }} --bin iso2god
+          mkdir -p ./out
+          mv ./target/${{ matrix.target }}/release/${{ matrix.build_filename }} out/${{ matrix.release_filename }}
 
       - name: Release
         uses: softprops/action-gh-release@v2
