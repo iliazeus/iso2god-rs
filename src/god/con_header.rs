@@ -67,18 +67,18 @@ impl ConHeaderBuilder {
 
         // this code writes plain bytes:
 
-        // cursor.write_u8(exe_info.platform).unwrap();
-        // cursor.write_u8(exe_info.executable_type).unwrap();
-        // cursor.write_u8(exe_info.disc_number).unwrap();
-        // cursor.write_u8(exe_info.disc_count).unwrap();
+        cursor.write_u8(exe_info.platform).unwrap();
+        cursor.write_u8(exe_info.executable_type).unwrap();
+        cursor.write_u8(exe_info.disc_number).unwrap();
+        cursor.write_u8(exe_info.disc_count).unwrap();
 
         // this code writes ASCII:
 
-        let ascii_0 = '0' as u8;
-        cursor.write_u8(exe_info.platform + ascii_0).unwrap();
-        cursor.write_u8(exe_info.executable_type + ascii_0).unwrap();
-        cursor.write_u8(exe_info.disc_number + ascii_0).unwrap();
-        cursor.write_u8(exe_info.disc_count + ascii_0).unwrap();
+        //let ascii_0 = '0' as u8;
+        //cursor.write_u8(exe_info.platform + ascii_0).unwrap();
+        //cursor.write_u8(exe_info.executable_type + ascii_0).unwrap();
+        //cursor.write_u8(exe_info.disc_number + ascii_0).unwrap();
+        //cursor.write_u8(exe_info.disc_count + ascii_0).unwrap();
 
         cursor.seek(SeekFrom::Start(0x0360)).unwrap();
         cursor.write_all(&exe_info.title_id).unwrap();
