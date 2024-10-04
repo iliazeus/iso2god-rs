@@ -1,21 +1,19 @@
 use std::path::{Path, PathBuf};
 
-use hex;
-
-use crate::xex;
+use crate::executable::TitleExecutionInfo;
 
 use super::*;
 
 pub struct FileLayout<'a> {
     base_path: &'a Path,
-    exe_info: &'a xex::XexExecutionInfo,
+    exe_info: &'a TitleExecutionInfo,
     content_type: ContentType,
 }
 
 impl<'a> FileLayout<'a> {
     pub fn new(
         base_path: &'a Path,
-        exe_info: &'a xex::XexExecutionInfo,
+        exe_info: &'a TitleExecutionInfo,
         content_type: ContentType,
     ) -> FileLayout<'a> {
         FileLayout {
@@ -26,7 +24,7 @@ impl<'a> FileLayout<'a> {
     }
 
     fn title_id_string(&self) -> String {
-        hex::encode_upper(self.exe_info.title_id)
+        format!("{:08X}", self.exe_info.title_id)
     }
 
     fn content_type_string(&self) -> String {
@@ -34,7 +32,14 @@ impl<'a> FileLayout<'a> {
     }
 
     fn media_id_string(&self) -> String {
-        hex::encode_upper(self.exe_info.media_id)
+        match self.content_type {
+            ContentType::GamesOnDemand => {
+                format!("{:08X}", self.exe_info.media_id)
+            }
+            ContentType::XboxOriginal => {
+                format!("{:08X}", self.exe_info.title_id)
+            }
+        }
     }
 
     pub fn data_dir_path(&self) -> PathBuf {

@@ -5,6 +5,7 @@ use byteorder::{ReadBytesExt, BE};
 use bitflags::bitflags;
 use num_enum::TryFromPrimitive;
 
+use crate::executable::TitleExecutionInfo;
 use anyhow::{bail, Error};
 
 #[derive(Clone, Debug)]
@@ -32,7 +33,7 @@ bitflags! {
 
 #[derive(Clone, Default, Debug)]
 pub struct XexHeaderFields {
-    pub execution_info: Option<XexExecutionInfo>,
+    pub execution_info: Option<TitleExecutionInfo>,
     // other fields will be added if and when necessary
 }
 
@@ -72,18 +73,6 @@ enum XexHeaderFieldId {
     AlternateTitleIds = 0x_00_04_07_ff,
     AdditionalTitleMemory = 0x_00_04_08_01,
     ExportsByName = 0x_00_e1_04_02,
-}
-
-#[derive(Clone, Debug)]
-pub struct XexExecutionInfo {
-    pub media_id: [u8; 4],
-    pub version: u32,
-    pub base_version: u32,
-    pub title_id: [u8; 4],
-    pub platform: u8,
-    pub executable_type: u8,
-    pub disc_number: u8,
-    pub disc_count: u8,
 }
 
 impl XexHeader {
@@ -133,7 +122,7 @@ impl XexHeader {
                 Some(Key::ExecutionId) => {
                     let offset = reader.stream_position()?;
                     reader.seek(SeekFrom::Start(header_offset + (value as u64)))?;
-                    fields.execution_info = Some(XexExecutionInfo::read(reader)?);
+                    fields.execution_info = Some(TitleExecutionInfo::from_xex(reader)?);
                     reader.seek(SeekFrom::Start(offset))?;
                 }
 
@@ -146,35 +135,6 @@ impl XexHeader {
             code_offset,
             certificate_offset,
             fields,
-        })
-    }
-}
-
-impl XexExecutionInfo {
-    fn read<R: Read>(reader: &mut R) -> Result<XexExecutionInfo, Error> {
-        let mut media_id = [0_u8; 4];
-        reader.read_exact(&mut media_id)?;
-
-        let version = reader.read_u32::<BE>()?;
-        let base_version = reader.read_u32::<BE>()?;
-
-        let mut title_id = [0_u8; 4];
-        reader.read_exact(&mut title_id)?;
-
-        let platform = reader.read_u8()?;
-        let executable_type = reader.read_u8()?;
-        let disc_number = reader.read_u8()?;
-        let disc_count = reader.read_u8()?;
-
-        Ok(XexExecutionInfo {
-            media_id,
-            version,
-            base_version,
-            title_id,
-            platform,
-            executable_type,
-            disc_number,
-            disc_count,
         })
     }
 }

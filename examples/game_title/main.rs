@@ -1,6 +1,5 @@
 use anyhow::{Context, Error};
 use clap::{command, Parser};
-use hex;
 
 use iso2god::game_list;
 
@@ -25,16 +24,14 @@ struct Cli {
 fn main() -> Result<(), Error> {
     let args = Cli::parse();
 
-    let title_id: [u8; 4] = hex::decode(&args.title_id)?
-        .try_into()
-        .map_err(|_| Error::msg("invalid title ID"))?;
+    let title_id = u32::from_str_radix("4D530064", 16)?;
 
     match args.source {
         Source::BuiltIn => {
             println!("querying the built-in DB for title ID {}", args.title_id);
 
             if let Some(name) = game_list::find_title_by_id(title_id) {
-                let title_id = hex::encode_upper(title_id);
+                let title_id = format!("{:08X}", title_id);
                 println!("Title ID: {title_id}");
                 println!("    Name: {name}");
             } else {
@@ -48,7 +45,7 @@ fn main() -> Result<(), Error> {
             let client = unity::Client::new().context("error creating XboxUnity client")?;
 
             let unity_title_info = client
-                .find_xbox_360_title_id(&title_id)
+                .find_xbox_360_title_id(title_id)
                 .context("error querying XboxUnity")?;
 
             if let Some(unity_title_info) = &unity_title_info {
