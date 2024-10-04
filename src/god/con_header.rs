@@ -4,7 +4,7 @@ use byteorder::{WriteBytesExt, BE, LE};
 
 use sha1::{Digest, Sha1};
 
-use crate::xex;
+use crate::executable::TitleExecutionInfo;
 
 const EMPTY_LIVE: &[u8] = include_bytes!("empty_live.bin");
 
@@ -57,7 +57,7 @@ impl ConHeaderBuilder {
         self
     }
 
-    pub fn with_execution_info(mut self, exe_info: &xex::XexExecutionInfo) -> Self {
+    pub fn with_execution_info(mut self, exe_info: &TitleExecutionInfo) -> Self {
         let mut cursor = Cursor::new(&mut self.buffer);
 
         cursor.seek(SeekFrom::Start(0x0364)).unwrap();
@@ -68,10 +68,10 @@ impl ConHeaderBuilder {
         cursor.write_u8(exe_info.disc_count).unwrap();
 
         cursor.seek(SeekFrom::Start(0x0360)).unwrap();
-        cursor.write_all(&exe_info.title_id).unwrap();
+        cursor.write_u32::<BE>(exe_info.title_id).unwrap();
 
         cursor.seek(SeekFrom::Start(0x0354)).unwrap();
-        cursor.write_all(&exe_info.media_id).unwrap();
+        cursor.write_u32::<BE>(exe_info.media_id).unwrap();
 
         self
     }

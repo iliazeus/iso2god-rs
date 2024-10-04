@@ -10,7 +10,9 @@ use anyhow::{Context, Error};
 
 use clap::{arg, command, Parser};
 
-use iso2god::{game_list, god, iso, xex};
+use iso2god::executable::TitleInfo;
+use iso2god::god::ContentType;
+use iso2god::{game_list, god, iso};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -58,25 +60,22 @@ fn main() -> Result<(), Error> {
     let mut source_iso = iso::IsoReader::read(BufReader::new(source_iso_file))
         .context("error reading source ISO")?;
 
-    let mut default_xex = source_iso
-        .get_entry(&"\\default.xex".into())
-        .context("error reading source ISO")?
-        .context("default.xex file not found")?;
+    let title_info =
+        TitleInfo::from_image(&mut source_iso).context("error reading image executable")?;
 
-    let default_xex_header =
-        xex::XexHeader::read(&mut default_xex).context("error reading default.xex")?;
-
-    let exe_info = default_xex_header
-        .fields
-        .execution_info
-        .context("no execution info in default.xex header")?;
+    let exe_info = title_info.execution_info;
+    let content_type = title_info.content_type;
 
     {
-        let title_id = hex::encode_upper(exe_info.title_id);
+        let title_id = format!("{:08X}", exe_info.title_id);
         let name = game_list::find_title_by_id(exe_info.title_id).unwrap_or("(unknown)".to_owned());
 
         println!("Title ID: {title_id}");
         println!("    Name: {name}");
+        match content_type {
+            ContentType::GamesOnDemand => println!("    Type: Games on Demand"),
+            ContentType::XboxOriginal => println!("    Type: Xbox Original"),
+        }
     }
 
     if args.dry_run {
@@ -92,9 +91,6 @@ fn main() -> Result<(), Error> {
 
     let block_count = div_ceil(data_size, god::BLOCK_SIZE as u64);
     let part_count = div_ceil(block_count, god::BLOCKS_PER_PART);
-
-    // the original code does not seem to support other types
-    let content_type = god::ContentType::GamesOnDemand;
 
     let file_layout = god::FileLayout::new(&args.dest_dir, &exe_info, content_type);
 
@@ -150,7 +146,7 @@ fn main() -> Result<(), Error> {
             part_count as u32,
             last_part_size + (part_count - 1) * (god::BLOCK_SIZE as u64) * 0xa290,
         )
-        .with_content_type(god::ContentType::GamesOnDemand)
+        .with_content_type(content_type)
         .with_mht_hash(&mht.digest());
 
     let game_title = args

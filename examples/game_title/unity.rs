@@ -8,8 +8,6 @@ use anyhow::Error;
 
 use std::time::Duration;
 
-use hex;
-
 use std::fmt;
 
 #[derive(Deserialize)]
@@ -131,8 +129,8 @@ impl Client {
         Ok(response)
     }
 
-    pub fn find_xbox_360_title_id(&self, title_id: &[u8; 4]) -> Result<Option<Title>, Error> {
-        let title_id = hex::encode_upper(title_id);
+    pub fn find_xbox_360_title_id(&self, title_id: u32) -> Result<Option<Title>, Error> {
+        let title_id = format!("{:08X}", title_id);
 
         let title_list = self.search(&title_id)?;
 
