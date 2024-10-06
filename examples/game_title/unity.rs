@@ -61,9 +61,6 @@ impl fmt::Display for Title {
 
 #[derive(Deserialize, PartialEq, Eq)]
 pub enum TitleType {
-    #[serde(rename = "")]
-    Xbox,
-
     #[serde(rename = "360")]
     Xbox360,
 
@@ -77,10 +74,9 @@ pub enum TitleType {
 impl fmt::Display for TitleType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Xbox => write!(f, "Xbox title"),
             Self::Xbox360 => write!(f, "Xbox 360 title"),
             Self::Xbla => write!(f, "Xbox Live Arcade title"),
-            Self::Xbox1 => write!(f, "Xbox One title"),
+            Self::Xbox1 => write!(f, "Original Xbox title"),
             Self::HomeBrew => write!(f, "Homebrew title"),
         }
     }
@@ -129,21 +125,28 @@ impl Client {
         Ok(response)
     }
 
-    pub fn find_xbox_360_title_id(&self, title_id: u32) -> Result<Option<Title>, Error> {
+    pub fn find_title(
+        &self,
+        title_type: Option<TitleType>,
+        title_id: u32,
+    ) -> Result<Option<Title>, Error> {
         let title_id = format!("{:08X}", title_id);
 
         let title_list = self.search(&title_id)?;
 
-        let best_title = title_list
+        let mut candidates = title_list
             .items
             .into_iter()
-            .filter(|t| t.title_id == title_id)
-            .min_by_key(|t| match t.title_type {
+            .filter(|t| t.title_id == title_id);
+
+        if let Some(title_type) = title_type {
+            Ok(candidates.find(|t| t.title_type == title_type))
+        } else {
+            Ok(candidates.min_by_key(|t| match t.title_type {
                 TitleType::Xbox360 => 0,
                 TitleType::Xbla => 1,
                 _ => 2,
-            });
-
-        Ok(best_title)
+            }))
+        }
     }
 }

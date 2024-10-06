@@ -1,6 +1,6 @@
 use crate::god::ContentType;
 use crate::iso::IsoReader;
-use anyhow::{anyhow, Context, Error};
+use anyhow::{bail, Context, Error};
 use byteorder::{ReadBytesExt, BE, LE};
 use std::io::{Read, Seek, SeekFrom};
 
@@ -60,48 +60,32 @@ impl TitleExecutionInfo {
 
 impl TitleInfo {
     pub fn from_image<R: Read + Seek>(iso_image: &mut IsoReader<R>) -> Result<TitleInfo, Error> {
-        let content_type;
-        let mut executable;
+        if let Some(mut executable) = iso_image.get_entry(&"\\default.xex".into())? {
+            let default_xex_header =
+                xex::XexHeader::read(&mut executable).context("error reading default.xex")?;
+            let execution_info = default_xex_header
+                .fields
+                .execution_info
+                .context("no execution info in default.xex header")?;
 
-        match iso_image.get_entry(&"\\default.xex".into())? {
-            Some(entry) => {
-                executable = entry;
-                content_type = ContentType::GamesOnDemand;
-            }
-            None => {
-                executable = iso_image
-                    .get_entry(&"\\default.xbe".into())?
-                    .ok_or_else(|| anyhow!("no executable found in this image"))?;
-                content_type = ContentType::XboxOriginal;
-            }
+            Ok(TitleInfo {
+                content_type: ContentType::GamesOnDemand,
+                execution_info,
+            })
+        } else if let Some(mut executable) = iso_image.get_entry(&"\\default.xbe".into())? {
+            let default_xbe_header =
+                xbe::XbeHeader::read(&mut executable).context("error reading default.xbe")?;
+            let execution_info = default_xbe_header
+                .fields
+                .execution_info
+                .context("no execution info in default.xbe header")?;
+
+            Ok(TitleInfo {
+                content_type: ContentType::XboxOriginal,
+                execution_info,
+            })
+        } else {
+            bail!("no executable found in this image");
         }
-
-        let execution_info;
-
-        match content_type {
-            ContentType::GamesOnDemand => {
-                let default_xex_header =
-                    xex::XexHeader::read(&mut executable).context("error reading default.xex")?;
-
-                execution_info = default_xex_header
-                    .fields
-                    .execution_info
-                    .context("no execution info in default.xex header")?;
-            }
-            ContentType::XboxOriginal => {
-                let default_xbe_header =
-                    xbe::XbeHeader::read(&mut executable).context("error reading default.xbe")?;
-
-                execution_info = default_xbe_header
-                    .fields
-                    .execution_info
-                    .context("no execution info in default.xbe header")?;
-            }
-        }
-
-        Ok(TitleInfo {
-            content_type,
-            execution_info,
-        })
     }
 }

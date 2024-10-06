@@ -13,7 +13,7 @@ use iso2god::iso;
 #[command(author, version, about, long_about = None)]
 #[command(color = clap::ColorChoice::Never)]
 struct Cli {
-    /// Xbox 360 ISO file
+    /// ISO file
     source_iso: PathBuf,
 }
 

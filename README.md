@@ -1,5 +1,5 @@
 # iso2god-rs
-A tool to convert Xbox 360 ISOs into a Games-On-Demand file format
+A tool to convert Xbox 360 and original Xbox ISOs into an Xbox 360 compatible Games-On-Demand file format
 
 This is an optimized rewrite of https://github.com/eliecharra/iso2god-cli, with a few extra features.
 
@@ -7,7 +7,7 @@ This is an optimized rewrite of https://github.com/eliecharra/iso2god-cli, with 
 Usage: iso2god [OPTIONS] <SOURCE_ISO> <DEST_DIR>
 
 Arguments:
-  <SOURCE_ISO>  Xbox 360 ISO file to convert
+  <SOURCE_ISO>  ISO file to convert
   <DEST_DIR>    A folder to write resulting GOD files to
 
 Options:
