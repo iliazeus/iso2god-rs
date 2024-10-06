@@ -19,12 +19,34 @@ struct Cli {
     source: Source,
 
     title_id: String,
+
+    #[arg(long, short = 't', value_enum)]
+    title_type: Option<CliTitleType>,
+}
+
+#[derive(Clone, clap::ValueEnum)]
+enum CliTitleType {
+    Xbox360,
+    Xbla,
+    OriginalXbox,
+    Homebrew,
+}
+impl Into<unity::TitleType> for CliTitleType {
+    fn into(self) -> unity::TitleType {
+        match self {
+            CliTitleType::Xbox360 => unity::TitleType::Xbox360,
+            CliTitleType::Xbla => unity::TitleType::Xbla,
+            CliTitleType::OriginalXbox => unity::TitleType::Xbox1,
+            CliTitleType::Homebrew => unity::TitleType::HomeBrew,
+        }
+    }
 }
 
 fn main() -> Result<(), Error> {
     let args = Cli::parse();
 
-    let title_id = u32::from_str_radix("4D530064", 16)?;
+    let title_id = u32::from_str_radix(&args.title_id, 16)?;
+    let title_type = args.title_type.map(|x| x.into());
 
     match args.source {
         Source::BuiltIn => {
@@ -45,7 +67,7 @@ fn main() -> Result<(), Error> {
             let client = unity::Client::new().context("error creating XboxUnity client")?;
 
             let unity_title_info = client
-                .find_xbox_360_title_id(title_id)
+                .find_title(title_type, title_id)
                 .context("error querying XboxUnity")?;
 
             if let Some(unity_title_info) = &unity_title_info {
