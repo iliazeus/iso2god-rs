@@ -6,16 +6,18 @@ use super::*;
 
 #[derive(Debug)]
 pub enum IsoType {
-    Gdf,
     Xgd3,
+    Xgd2,
+    Xgd1,
     Xsf,
 }
 
 impl IsoType {
     pub fn root_offset(&self) -> u64 {
         match self {
-            IsoType::Gdf => 0xfd90000,
             IsoType::Xgd3 => 0x2080000,
+            IsoType::Xgd2 => 0xfd90000,
+            IsoType::Xgd1 => 0x18300000,
             IsoType::Xsf => 0,
         }
     }
@@ -25,8 +27,12 @@ impl IsoType {
             return Ok(Some(IsoType::Xsf));
         }
 
-        if Self::check(reader, IsoType::Gdf)? {
-            return Ok(Some(IsoType::Gdf));
+        if Self::check(reader, IsoType::Xgd2)? {
+            return Ok(Some(IsoType::Xgd2));
+        }
+
+        if Self::check(reader, IsoType::Xgd1)? {
+            return Ok(Some(IsoType::Xgd1));
         }
 
         // original code had no extra check here, simply returning Xgd3 as fallback
