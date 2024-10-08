@@ -25,13 +25,13 @@ jobs:
             build_filename: iso2god
             release_filename: iso2god-x86_64-linux
 
-          - runner: macos-12
+          - runner: macos-13
             rust: 1.81.0
             target: x86_64-apple-darwin
             build_filename: iso2god
             release_filename: iso2god-x86_64-macos
 
-          - runner: macos-14
+          - runner: macos-latest
             rust: 1.81.0
             target: aarch64-apple-darwin
             build_filename: iso2god
