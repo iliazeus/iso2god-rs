@@ -15,6 +15,7 @@ clap = { version = "4.5.19", features = ["derive"] }
 num = "0.4.3"
 num_enum = "0.7.3"
 sha1 = "0.10.6"
+thiserror = "1.0.64"
 
 [dev-dependencies]
 reqwest = { version = "0.12.8", features = ["blocking", "json"] }
