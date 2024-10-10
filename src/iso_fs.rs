@@ -30,7 +30,10 @@ impl IsoType {
 #[derive(Debug)]
 pub struct Fs<R> {
     reader: R,
+
     offset: u64,
+    size: u64,
+
     root_dir_extent: FsExtent,
 
     #[allow(unused)]
@@ -40,6 +43,10 @@ pub struct Fs<R> {
 impl<R> Fs<R> {
     pub fn offset(&self) -> u64 {
         self.offset
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
     }
 }
 
@@ -53,7 +60,7 @@ pub struct FsExtent {
 }
 
 impl FsExtent {
-    pub fn tail(self) -> Self {
+    pub fn advance_start(self) -> Self {
         if self.size == 0 {
             return self;
         }
@@ -70,20 +77,17 @@ impl FsExtent {
 }
 
 impl<R: Read + Seek> Fs<R> {
+    pub fn borrow_reader(&mut self) -> &mut R {
+        &mut self.reader
+    }
+
     pub fn seek_to_sector(&mut self, sector: u32) -> Result<&mut R, std::io::Error> {
         self.reader
             .seek(SeekFrom::Start(self.offset + (sector as u64) * SECTOR_SIZE))?;
         Ok(&mut self.reader)
     }
 
-    pub fn extent_reader(
-        &mut self,
-        extent: FsExtent,
-    ) -> Result<std::io::Take<&mut R>, std::io::Error> {
-        Ok(self.seek_to_sector(extent.sector)?.take(extent.size as u64))
-    }
-
-    pub fn data_reader(&mut self) -> Result<&mut R, std::io::Error> {
+    pub fn seek_to_start(&mut self) -> Result<&mut R, std::io::Error> {
         self.reader.seek(SeekFrom::Start(self.offset))?;
         Ok(&mut self.reader)
     }
@@ -151,9 +155,13 @@ impl<R: Read + Seek> Fs<R> {
 
         let creation_time = reader.read_u64::<LE>()?;
 
+        let end = reader.seek(SeekFrom::End(0))?;
+        let size = end - offset;
+
         Ok(Self {
             reader,
             offset,
+            size,
             root_dir_extent,
             creation_time,
         })
@@ -207,7 +215,7 @@ impl<'a, R: Read + Seek> DirIter<'a, R> {
             while let Some(entry) = DirEntry::try_read(&mut self.fs.reader)? {
                 return Ok(Some(entry));
             }
-            self.extent = self.extent.tail();
+            self.extent = self.extent.advance_start();
             self.fs.seek_to_sector(self.extent.sector)?;
         }
         Ok(None)
