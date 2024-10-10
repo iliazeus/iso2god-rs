@@ -59,31 +59,39 @@ impl TitleExecutionInfo {
 }
 
 impl TitleInfo {
+    pub fn from_xex<R: Read + Seek>(mut reader: R) -> Result<TitleInfo, Error> {
+        let default_xex_header =
+            xex::XexHeader::read(&mut reader).context("error reading default.xex")?;
+        let execution_info = default_xex_header
+            .fields
+            .execution_info
+            .context("no execution info in default.xex header")?;
+
+        Ok(TitleInfo {
+            content_type: ContentType::GamesOnDemand,
+            execution_info,
+        })
+    }
+
+    pub fn from_xbe<R: Read + Seek>(mut reader: R) -> Result<TitleInfo, Error> {
+        let default_xbe_header =
+            xbe::XbeHeader::read(&mut reader).context("error reading default.xbe")?;
+        let execution_info = default_xbe_header
+            .fields
+            .execution_info
+            .context("no execution info in default.xbe header")?;
+
+        Ok(TitleInfo {
+            content_type: ContentType::XboxOriginal,
+            execution_info,
+        })
+    }
+
     pub fn from_image<R: Read + Seek>(iso_image: &mut IsoReader<R>) -> Result<TitleInfo, Error> {
-        if let Some(mut executable) = iso_image.get_entry(&"\\default.xex".into())? {
-            let default_xex_header =
-                xex::XexHeader::read(&mut executable).context("error reading default.xex")?;
-            let execution_info = default_xex_header
-                .fields
-                .execution_info
-                .context("no execution info in default.xex header")?;
-
-            Ok(TitleInfo {
-                content_type: ContentType::GamesOnDemand,
-                execution_info,
-            })
-        } else if let Some(mut executable) = iso_image.get_entry(&"\\default.xbe".into())? {
-            let default_xbe_header =
-                xbe::XbeHeader::read(&mut executable).context("error reading default.xbe")?;
-            let execution_info = default_xbe_header
-                .fields
-                .execution_info
-                .context("no execution info in default.xbe header")?;
-
-            Ok(TitleInfo {
-                content_type: ContentType::XboxOriginal,
-                execution_info,
-            })
+        if let Some(executable) = iso_image.get_entry(&"\\default.xex".into())? {
+            Self::from_xex(executable)
+        } else if let Some(executable) = iso_image.get_entry(&"\\default.xbe".into())? {
+            Self::from_xbe(executable)
         } else {
             bail!("no executable found in this image");
         }
