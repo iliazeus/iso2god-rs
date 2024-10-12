@@ -4,8 +4,6 @@ use std::io::{Read, Seek, SeekFrom};
 
 use bitflags::bitflags;
 
-use num::integer::div_ceil;
-
 use anyhow::Error;
 
 use super::*;
@@ -60,7 +58,7 @@ impl DirectoryTable {
     ) -> Result<DirectoryTable, Error> {
         let mut entries = Vec::<DirectoryEntry>::new();
 
-        let sector_count = div_ceil(size, SECTOR_SIZE as u32);
+        let sector_count = size.div_ceil(SECTOR_SIZE as u32);
         for sector_index in 0..sector_count {
             let sector_position =
                 ((sector + sector_index) as u64) * volume.sector_size + volume.root_offset;

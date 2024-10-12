@@ -4,8 +4,6 @@ use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use num::integer::div_ceil;
-
 use anyhow::{Context, Error};
 
 use clap::{arg, command, Parser};
@@ -89,8 +87,8 @@ fn main() -> Result<(), Error> {
         source_iso_file_meta.len() - root_offset
     };
 
-    let block_count = div_ceil(data_size, god::BLOCK_SIZE as u64);
-    let part_count = div_ceil(block_count, god::BLOCKS_PER_PART);
+    let block_count = data_size.div_ceil(god::BLOCK_SIZE as u64);
+    let part_count = block_count.div_ceil(god::BLOCKS_PER_PART);
 
     let file_layout = god::FileLayout::new(&args.dest_dir, &exe_info, content_type);
 
