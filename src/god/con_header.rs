@@ -1,6 +1,4 @@
-use std::io::{Cursor, Seek, SeekFrom, Write};
-
-use byteorder::{WriteBytesExt, BE, LE};
+use byteorder::{ByteOrder, BE, LE};
 
 use sha1::{Digest, Sha1};
 
@@ -25,101 +23,84 @@ impl ConHeaderBuilder {
         }
     }
 
+    fn write_u8(&mut self, offset: usize, value: u8) {
+        self.buffer[offset] = value;
+    }
+
+    fn write_u16_be(&mut self, offset: usize, value: u16) {
+        BE::write_u16(&mut self.buffer[offset..], value);
+    }
+
+    fn write_u24_be(&mut self, offset: usize, value: u32) {
+        BE::write_u24(&mut self.buffer[offset..], value);
+    }
+
+    fn write_u32_be(&mut self, offset: usize, value: u32) {
+        BE::write_u32(&mut self.buffer[offset..], value);
+    }
+
+    fn write_u32_le(&mut self, offset: usize, value: u32) {
+        LE::write_u32(&mut self.buffer[offset..], value);
+    }
+
+    fn write_bytes(&mut self, offset: usize, buf: &[u8]) {
+        self.buffer[offset..offset + buf.len()].copy_from_slice(buf);
+    }
+
+    fn write_utf16_be(&mut self, offset: usize, s: &str) {
+        for (i, c) in s.encode_utf16().enumerate() {
+            self.write_u16_be(offset + i, c);
+        }
+        self.write_u16_be(offset + s.len(), 0);
+    }
+
     pub fn with_block_counts(mut self, blocks_allocated: u32, blocks_not_allocated: u16) -> Self {
-        let mut cursor = Cursor::new(&mut self.buffer);
-
-        cursor.seek(SeekFrom::Start(0x0392)).unwrap();
-        cursor.write_u24::<BE>(blocks_allocated).unwrap();
-        cursor.write_u16::<BE>(blocks_not_allocated).unwrap();
-
+        self.write_u24_be(0x0392, blocks_allocated);
+        self.write_u16_be(0x0395, blocks_not_allocated);
         self
     }
 
     pub fn with_content_type(mut self, content_type: ContentType) -> Self {
-        let mut cursor = Cursor::new(&mut self.buffer);
-
-        cursor.seek(SeekFrom::Start(0x0344)).unwrap();
-        cursor.write_u32::<BE>(content_type as u32).unwrap();
-
+        self.write_u32_be(0x0344, content_type as u32);
         self
     }
 
     pub fn with_data_parts_info(mut self, part_count: u32, parts_total_size: u64) -> Self {
-        let mut cursor = Cursor::new(&mut self.buffer);
-
-        cursor.seek(SeekFrom::Start(0x03a0)).unwrap();
-        cursor.write_u32::<LE>(part_count).unwrap(); // sic!
-
-        cursor
-            .write_u32::<BE>((parts_total_size / 0x0100) as u32)
-            .unwrap();
-
+        self.write_u32_le(0x03a0, part_count); // sic!
+        self.write_u32_be(0x03a4, (parts_total_size / 0x0100) as u32);
         self
     }
 
     pub fn with_execution_info(mut self, exe_info: &TitleExecutionInfo) -> Self {
-        let mut cursor = Cursor::new(&mut self.buffer);
-
-        cursor.seek(SeekFrom::Start(0x0364)).unwrap();
-
-        cursor.write_u8(exe_info.platform).unwrap();
-        cursor.write_u8(exe_info.executable_type).unwrap();
-        cursor.write_u8(exe_info.disc_number).unwrap();
-        cursor.write_u8(exe_info.disc_count).unwrap();
-
-        cursor.seek(SeekFrom::Start(0x0360)).unwrap();
-        cursor.write_u32::<BE>(exe_info.title_id).unwrap();
-
-        cursor.seek(SeekFrom::Start(0x0354)).unwrap();
-        cursor.write_u32::<BE>(exe_info.media_id).unwrap();
-
+        // TODO: maybe just pick a suitable repr() for the struct, and write it whole?
+        self.write_u32_be(0x0354, exe_info.media_id);
+        self.write_u32_be(0x0360, exe_info.title_id);
+        self.write_u8(0x0364, exe_info.platform);
+        self.write_u8(0x0365, exe_info.executable_type);
+        self.write_u8(0x0366, exe_info.disc_number);
+        self.write_u8(0x0376, exe_info.disc_count);
         self
     }
 
     pub fn with_game_icon(mut self, png_bytes: Option<&[u8]>) -> Self {
-        let empty_bytes = [0_u8; 20];
-        let png_bytes = png_bytes.unwrap_or(&empty_bytes);
+        let png_bytes = png_bytes.unwrap_or(&[]);
+        assert!(png_bytes.len() <= 0x0400);
 
-        let mut cursor = Cursor::new(&mut self.buffer);
-
-        cursor.seek(SeekFrom::Start(0x1712)).unwrap();
-
-        cursor.write_u32::<BE>(png_bytes.len() as u32).unwrap();
-        cursor.write_u32::<BE>(png_bytes.len() as u32).unwrap(); // sic!
-
-        cursor.seek(SeekFrom::Start(0x171a)).unwrap();
-        cursor.write_all(png_bytes).unwrap();
-
-        cursor.seek(SeekFrom::Start(0x571a)).unwrap();
-        cursor.write_all(png_bytes).unwrap();
-
+        self.write_u32_be(0x1712, png_bytes.len() as u32);
+        self.write_u32_be(0x1716, png_bytes.len() as u32);
+        self.write_bytes(0x171a, png_bytes);
+        self.write_bytes(0x571a, png_bytes);
         self
     }
 
     pub fn with_game_title(mut self, game_title: &str) -> Self {
-        let mut cursor = Cursor::new(&mut self.buffer);
-
-        cursor.seek(SeekFrom::Start(0x0411)).unwrap();
-
-        for code_unit in game_title.encode_utf16().into_iter() {
-            cursor.write_u16::<BE>(code_unit).unwrap();
-        }
-
-        cursor.seek(SeekFrom::Start(0x1691)).unwrap();
-
-        for code_unit in game_title.encode_utf16().into_iter() {
-            cursor.write_u16::<BE>(code_unit).unwrap();
-        }
-
+        self.write_utf16_be(0x0411, game_title);
+        self.write_utf16_be(0x1691, game_title);
         self
     }
 
     pub fn with_mht_hash(mut self, mht_hash: &[u8; 20]) -> Self {
-        let mut cursor = Cursor::new(&mut self.buffer);
-
-        cursor.seek(SeekFrom::Start(0x037d)).unwrap();
-        cursor.write_all(mht_hash).unwrap();
-
+        self.write_bytes(0x037d, mht_hash);
         self
     }
 
@@ -128,14 +109,8 @@ impl ConHeaderBuilder {
         self.buffer[0x035f] = 0;
         self.buffer[0x0391] = 0;
 
-        {
-            let digest: [u8; 20] = Sha1::digest(&self.buffer[0x0344..(0x0344 + 0xacbc)]).into();
-
-            let mut cursor = Cursor::new(&mut self.buffer);
-            cursor.seek(SeekFrom::Start(0x032c)).unwrap();
-
-            cursor.write_all(&digest).unwrap();
-        }
+        let digest: [u8; 20] = Sha1::digest(&self.buffer[0x0344..(0x0344 + 0xacbc)]).into();
+        self.write_bytes(0x032c, &digest);
 
         self.buffer
     }
