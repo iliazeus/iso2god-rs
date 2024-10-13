@@ -5,37 +5,37 @@ use sha1::{Digest, Sha1};
 use anyhow::Error;
 
 pub struct HashList {
-    buffer: Vec<u8>,
+    buffer: [u8; 4096],
+    len: usize,
 }
 
 impl HashList {
+    pub fn bytes(&self) -> &[u8; 4096] {
+        &self.buffer
+    }
+
     pub fn new() -> HashList {
         HashList {
-            buffer: Vec::with_capacity(4096),
+            buffer: [0u8; 4096],
+            len: 0,
         }
     }
 
-    pub fn read<R: Read>(reader: &mut R) -> Result<HashList, Error> {
-        let mut reader = reader.by_ref().take(4096);
-        let mut buffer = Vec::<u8>::with_capacity(4096);
+    pub fn read<R: Read>(mut reader: R) -> Result<HashList, Error> {
+        let mut buffer = [0u8; 4096];
+        reader.read_exact(&mut buffer)?;
 
-        let mut block_buffer = Vec::<u8>::with_capacity(20);
+        let len = buffer
+            .chunks(20)
+            .position(|c| *c == [0u8; 20])
+            .unwrap_or(buffer.len());
 
-        loop {
-            reader.by_ref().take(20).read_to_end(&mut block_buffer)?;
-
-            if block_buffer.is_empty() || block_buffer.iter().all(|x| *x == 0) {
-                break;
-            }
-
-            buffer.append(&mut block_buffer);
-        }
-
-        Ok(HashList { buffer })
+        Ok(HashList { buffer, len })
     }
 
     pub fn add_hash(&mut self, hash: &[u8; 20]) {
-        self.buffer.extend_from_slice(hash);
+        self.buffer[self.len..self.len + 20].copy_from_slice(hash);
+        self.len += 20;
     }
 
     pub fn add_block_hash(&mut self, block: &[u8]) {
@@ -43,17 +43,11 @@ impl HashList {
     }
 
     pub fn digest(&self) -> [u8; 20] {
-        Sha1::digest(self.to_bytes()).into()
+        Sha1::digest(&self.buffer).into()
     }
 
     pub fn write<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
-        writer.write_all(&self.to_bytes())?;
+        writer.write_all(&self.buffer)?;
         Ok(())
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut buf = self.buffer.clone();
-        buf.resize(4096, 0);
-        buf
     }
 }

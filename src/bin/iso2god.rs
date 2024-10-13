@@ -1,12 +1,15 @@
-use std::io::{BufReader, BufWriter, Read, Seek, Write};
+use std::io::{BufReader, Seek, SeekFrom, Write};
 
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Error};
 
 use clap::{arg, command, Parser};
+
+use rayon::prelude::*;
 
 use iso2god::executable::TitleInfo;
 use iso2god::god::ContentType;
@@ -37,6 +40,10 @@ struct Cli {
     /// Trim off unused space from the ISO image
     #[arg(long)]
     trim: bool,
+
+    /// Number of worker threads to use
+    #[arg(long, short = 'j')]
+    num_threads: Option<usize>,
 }
 
 fn main() -> Result<(), Error> {
@@ -47,10 +54,13 @@ fn main() -> Result<(), Error> {
         eprintln!("the --offline flag is deprecated: the tool now has a built-in title database, so it is always offline");
     }
 
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(args.num_threads.unwrap_or(0))
+        .build_global()?;
+
     println!("extracting ISO metadata");
 
-    let source_iso_file = open_file_for_buffered_reading(&args.source_iso)
-        .context("error opening source ISO file")?;
+    let source_iso_file = File::open(&args.source_iso).context("error opening source ISO file")?;
 
     let source_iso_file_meta =
         fs::metadata(&args.source_iso).context("error reading source ISO file metadata")?;
@@ -96,23 +106,31 @@ fn main() -> Result<(), Error> {
 
     ensure_empty_dir(&file_layout.data_dir_path()).context("error clearing data directory")?;
 
-    let mut source_iso = source_iso
-        .get_root()
-        .context("error reading source iso")?
-        .take(data_size);
+    println!("writing part files:  0/{part_count}");
 
-    println!("writing part files");
+    let progress = AtomicUsize::new(0);
 
-    for part_index in 0..part_count {
-        println!("writing part {:2} of {:2}", part_index, part_count);
+    (0..part_count).into_par_iter().try_for_each(|part_index| {
+        let mut iso_data_volume = File::open(&args.source_iso)?;
+        iso_data_volume.seek(SeekFrom::Start(source_iso.volume_descriptor.root_offset))?;
 
         let part_file = file_layout.part_file_path(part_index);
 
-        let mut part_file =
-            open_file_for_buffered_writing(&part_file).context("error creating part file")?;
+        let part_file = File::options()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&part_file)
+            .context("error creating part file")?;
 
-        god::write_part(&mut source_iso, &mut part_file).context("error writing part file")?;
-    }
+        god::write_part(iso_data_volume, part_index, part_file)
+            .context("error writing part file")?;
+
+        let cur = 1 + progress.fetch_add(1, Ordering::Relaxed);
+        println!("writing part files: {cur:2}/{part_count}");
+
+        Ok::<_, anyhow::Error>(())
+    })?;
 
     println!("calculating MHT hash chain");
 
@@ -156,7 +174,11 @@ fn main() -> Result<(), Error> {
 
     let con_header = con_header.finalize();
 
-    let mut con_header_file = open_file_for_buffered_writing(&file_layout.con_header_file_path())
+    let mut con_header_file = File::options()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(file_layout.con_header_file_path())
         .context("cannot open con header file")?;
 
     con_header_file
@@ -191,16 +213,4 @@ fn write_part_mht(
     let mut part_file = File::options().write(true).open(part_file)?;
     mht.write(&mut part_file)?;
     Ok(())
-}
-
-fn open_file_for_buffered_writing(path: &Path) -> Result<impl Write + Seek, Error> {
-    let file = File::options().create(true).write(true).open(path)?;
-    let file = BufWriter::with_capacity(8 * 1024 * 1024, file);
-    Ok(file)
-}
-
-fn open_file_for_buffered_reading(path: &Path) -> Result<impl Read + Seek, Error> {
-    let file = File::options().read(true).open(path)?;
-    let file = BufReader::with_capacity(8 * 1024 * 1024, file);
-    Ok(file)
 }
