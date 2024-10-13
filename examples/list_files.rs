@@ -1,7 +1,5 @@
-use std::io::{BufReader, Read, Seek};
-
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{Context, Error};
 
@@ -22,11 +20,9 @@ fn main() -> Result<(), Error> {
 
     println!("extracting ISO metadata");
 
-    let source_iso_file = open_file_for_buffered_reading(&args.source_iso)
-        .context("error opening source ISO file")?;
+    let source_iso_file = File::open(&args.source_iso).context("error opening source ISO file")?;
 
-    let source_iso = iso::IsoReader::read(BufReader::new(source_iso_file))
-        .context("error reading source ISO")?;
+    let source_iso = iso::IsoReader::read(source_iso_file).context("error reading source ISO")?;
 
     println!("{:?}", source_iso.volume_descriptor);
     println!("max used size: {}", source_iso.get_max_used_prefix_size());
@@ -34,12 +30,6 @@ fn main() -> Result<(), Error> {
     print_dir(String::new(), &source_iso.directory_table);
 
     Ok(())
-}
-
-fn open_file_for_buffered_reading(path: &Path) -> Result<impl Read + Seek, Error> {
-    let file = File::options().read(true).open(path)?;
-    let file = BufReader::with_capacity(8 * 1024 * 1024, file);
-    Ok(file)
 }
 
 fn print_dir(path: String, dir: &iso::DirectoryTable) {

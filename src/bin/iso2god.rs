@@ -1,4 +1,4 @@
-use std::io::{BufReader, Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom, Write};
 
 use std::fs;
 use std::fs::File;
@@ -65,8 +65,8 @@ fn main() -> Result<(), Error> {
     let source_iso_file_meta =
         fs::metadata(&args.source_iso).context("error reading source ISO file metadata")?;
 
-    let mut source_iso = iso::IsoReader::read(BufReader::new(source_iso_file))
-        .context("error reading source ISO")?;
+    let mut source_iso =
+        iso::IsoReader::read(source_iso_file).context("error reading source ISO")?;
 
     let title_info =
         TitleInfo::from_image(&mut source_iso).context("error reading image executable")?;
