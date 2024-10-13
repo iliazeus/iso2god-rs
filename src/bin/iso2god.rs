@@ -34,7 +34,7 @@ struct Cli {
     dry_run: bool,
 
     /// Set game title
-    #[arg(long)]
+    #[arg(long, value_name = "TITLE")]
     game_title: Option<String>,
 
     /// Trim off unused space from the ISO image
@@ -42,7 +42,7 @@ struct Cli {
     trim: bool,
 
     /// Number of worker threads to use
-    #[arg(long, short = 'j')]
+    #[arg(long, short = 'j', value_name = "N")]
     num_threads: Option<usize>,
 }
 

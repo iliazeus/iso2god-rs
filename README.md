@@ -11,9 +11,10 @@ Arguments:
   <DEST_DIR>    A folder to write resulting GOD files to
 
 Options:
-      --dry-run                  Do not convert anything, just print the title info
-      --game-title <GAME_TITLE>  Set game title
-      --trim                     Trim off unused space from the ISO image
-  -h, --help                     Print help
-  -V, --version                  Print version
+      --dry-run             Do not convert anything, just print the title info
+      --game-title <TITLE>  Set game title
+      --trim                Trim off unused space from the ISO image
+  -j, --num-threads <N>     Number of worker threads to use
+  -h, --help                Print help
+  -V, --version             Print version
 ```
