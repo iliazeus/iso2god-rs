@@ -16,25 +16,23 @@ pub use hash_list::*;
 
 pub const BLOCKS_PER_PART: u64 = 0xa1c4;
 pub const BLOCKS_PER_SUBPART: u64 = 0xcc;
-pub const BLOCK_SIZE: usize = 0x1000;
+pub const BLOCK_SIZE: u64 = 0x1000;
 pub const SUBPARTS_PER_PART: u32 = 0xcb;
-pub const SUBPART_SIZE: usize = BLOCK_SIZE * BLOCKS_PER_SUBPART as usize;
+pub const SUBPART_SIZE: u64 = BLOCK_SIZE * BLOCKS_PER_SUBPART;
 
 pub fn write_part<R: Read + Seek, W: Write + Seek>(
     mut data_volume: R,
     part_index: u64,
     mut part_file: W,
 ) -> Result<(), Error> {
-    data_volume.seek(SeekFrom::Start(
-        part_index * BLOCKS_PER_PART * BLOCK_SIZE as u64,
-    ))?;
+    data_volume.seek_relative((part_index * BLOCKS_PER_PART * BLOCK_SIZE) as i64)?;
 
     let mut master_hash_list = HashList::new();
 
     let master_hash_list_position = part_file.stream_position()?;
     master_hash_list.write(&mut part_file)?;
 
-    let mut subpart_buf = Vec::with_capacity(SUBPART_SIZE);
+    let mut subpart_buf = Vec::with_capacity(SUBPART_SIZE as usize);
 
     for _subpart_index in 0..SUBPARTS_PER_PART {
         data_volume
@@ -48,7 +46,7 @@ pub fn write_part<R: Read + Seek, W: Write + Seek>(
 
         let mut sub_hash_list = HashList::new();
 
-        for block in subpart_buf.chunks(BLOCK_SIZE) {
+        for block in subpart_buf.chunks(BLOCK_SIZE as usize) {
             sub_hash_list.add_block_hash(block);
         }
 
@@ -63,7 +61,7 @@ pub fn write_part<R: Read + Seek, W: Write + Seek>(
             &mut part_file,
         )?;
 
-        if subpart_buf.len() < SUBPART_SIZE {
+        if subpart_buf.len() < SUBPART_SIZE as usize {
             break;
         }
         subpart_buf.clear();
