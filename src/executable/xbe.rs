@@ -16,8 +16,8 @@ pub struct XbeHeaderFields {
 }
 
 impl XbeHeader {
-    pub fn read<R: Read + Seek>(reader: &mut R) -> Result<XbeHeader, Error> {
-        Self::check_magic_bytes(reader)?;
+    pub fn read<R: Read + Seek>(mut reader: R) -> Result<XbeHeader, Error> {
+        Self::check_magic_bytes(&mut reader)?;
 
         // Offset 0x0104
         reader.seek(SeekFrom::Current(256))?;
@@ -41,7 +41,7 @@ impl XbeHeader {
         })
     }
 
-    fn check_magic_bytes<R: Read + Seek>(reader: &mut R) -> Result<(), Error> {
+    fn check_magic_bytes<R: Read + Seek>(mut reader: R) -> Result<(), Error> {
         let mut magic_bytes = [0u8; 4];
         reader.read_exact(&mut magic_bytes)?;
 

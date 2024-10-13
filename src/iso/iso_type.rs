@@ -22,30 +22,30 @@ impl IsoType {
         }
     }
 
-    pub fn read<R: Read + Seek>(reader: &mut R) -> Result<Option<IsoType>, Error> {
-        if Self::check(reader, IsoType::Xsf)? {
+    pub fn read<R: Read + Seek>(mut reader: R) -> Result<Option<IsoType>, Error> {
+        if Self::check(&mut reader, IsoType::Xsf)? {
             return Ok(Some(IsoType::Xsf));
         }
 
-        if Self::check(reader, IsoType::Xgd2)? {
+        if Self::check(&mut reader, IsoType::Xgd2)? {
             return Ok(Some(IsoType::Xgd2));
         }
 
-        if Self::check(reader, IsoType::Xgd1)? {
+        if Self::check(&mut reader, IsoType::Xgd1)? {
             return Ok(Some(IsoType::Xgd1));
         }
 
         // original code had no extra check here, simply returning Xgd3 as fallback
         // https://github.com/eliecharra/iso2god-cli/blob/a3b266a5/Chilano/Xbox360/Iso/GDF.cs#L268
 
-        if Self::check(reader, IsoType::Xgd3)? {
+        if Self::check(&mut reader, IsoType::Xgd3)? {
             return Ok(Some(IsoType::Xgd3));
         }
 
         Ok(None)
     }
 
-    fn check<R: Read + Seek>(reader: &mut R, iso_type: IsoType) -> Result<bool, Error> {
+    fn check<R: Read + Seek>(mut reader: R, iso_type: IsoType) -> Result<bool, Error> {
         let mut buf = [0_u8; 20];
 
         reader.seek(SeekFrom::Start(0x20 * SECTOR_SIZE + iso_type.root_offset()))?;

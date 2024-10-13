@@ -20,13 +20,14 @@ pub struct VolumeDescriptor {
 }
 
 impl VolumeDescriptor {
-    pub fn read<R: Read + Seek>(reader: &mut R) -> Result<VolumeDescriptor, Error> {
-        let iso_type = IsoType::read(reader)?.ok_or_else(|| format_err!("invalid ISO format"))?;
+    pub fn read<R: Read + Seek>(mut reader: R) -> Result<VolumeDescriptor, Error> {
+        let iso_type =
+            IsoType::read(&mut reader)?.ok_or_else(|| format_err!("invalid ISO format"))?;
         Self::read_of_type(reader, iso_type)
     }
 
     fn read_of_type<R: Read + Seek>(
-        reader: &mut R,
+        mut reader: R,
         iso_type: IsoType,
     ) -> Result<VolumeDescriptor, Error> {
         reader.seek(SeekFrom::Start(0x20 * SECTOR_SIZE + iso_type.root_offset()))?;

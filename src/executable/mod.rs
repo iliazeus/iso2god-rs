@@ -25,7 +25,7 @@ pub struct TitleInfo {
 }
 
 impl TitleExecutionInfo {
-    pub fn from_xex<R: Read>(reader: &mut R) -> Result<TitleExecutionInfo, Error> {
+    pub fn from_xex<R: Read>(mut reader: R) -> Result<TitleExecutionInfo, Error> {
         Ok(TitleExecutionInfo {
             media_id: reader.read_u32::<BE>()?,
             version: reader.read_u32::<BE>()?,
@@ -38,7 +38,7 @@ impl TitleExecutionInfo {
         })
     }
 
-    pub fn from_xbe<R: Read + Seek>(reader: &mut R) -> Result<TitleExecutionInfo, Error> {
+    pub fn from_xbe<R: Read + Seek>(mut reader: R) -> Result<TitleExecutionInfo, Error> {
         reader.seek(SeekFrom::Current(8))?;
         let title_id = reader.read_u32::<LE>()?;
 

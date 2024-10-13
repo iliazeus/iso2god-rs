@@ -76,12 +76,12 @@ enum XexHeaderFieldId {
 }
 
 impl XexHeader {
-    pub fn read<R: Read + Seek>(reader: &mut R) -> Result<XexHeader, Error> {
-        Self::check_magic_bytes(reader)?;
+    pub fn read<R: Read + Seek>(mut reader: R) -> Result<XexHeader, Error> {
+        Self::check_magic_bytes(&mut reader)?;
         Self::read_checked(reader)
     }
 
-    fn check_magic_bytes<R: Read + Seek>(reader: &mut R) -> Result<(), Error> {
+    fn check_magic_bytes<R: Read + Seek>(mut reader: R) -> Result<(), Error> {
         let mut buf = [0_u8; 4];
         reader.read_exact(&mut buf)?;
 
@@ -94,7 +94,7 @@ impl XexHeader {
         Ok(())
     }
 
-    fn read_checked<R: Read + Seek>(reader: &mut R) -> Result<XexHeader, Error> {
+    fn read_checked<R: Read + Seek>(mut reader: R) -> Result<XexHeader, Error> {
         let header_offset = reader.stream_position()?;
 
         let _ = reader.read_u32::<BE>()?;
@@ -122,7 +122,7 @@ impl XexHeader {
                 Some(Key::ExecutionId) => {
                     let offset = reader.stream_position()?;
                     reader.seek(SeekFrom::Start(header_offset + (value as u64)))?;
-                    fields.execution_info = Some(TitleExecutionInfo::from_xex(reader)?);
+                    fields.execution_info = Some(TitleExecutionInfo::from_xex(&mut reader)?);
                     reader.seek(SeekFrom::Start(offset))?;
                 }
 

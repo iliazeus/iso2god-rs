@@ -39,7 +39,7 @@ bitflags! {
 
 impl DirectoryTable {
     pub fn read_root<R: Read + Seek>(
-        reader: &mut R,
+        reader: R,
         volume: &VolumeDescriptor,
     ) -> Result<DirectoryTable, Error> {
         Self::read(
@@ -51,7 +51,7 @@ impl DirectoryTable {
     }
 
     fn read<R: Read + Seek>(
-        reader: &mut R,
+        mut reader: R,
         volume: &VolumeDescriptor,
         sector: u32,
         size: u32,
@@ -64,7 +64,7 @@ impl DirectoryTable {
                 ((sector + sector_index) as u64) * volume.sector_size + volume.root_offset;
             reader.seek(SeekFrom::Start(sector_position))?;
 
-            while let Some(entry) = DirectoryEntry::read(reader, volume)? {
+            while let Some(entry) = DirectoryEntry::read(&mut reader, volume)? {
                 entries.push(entry);
             }
         }
@@ -85,7 +85,7 @@ impl DirectoryTable {
 
 impl DirectoryEntry {
     fn read<R: Read + Seek>(
-        reader: &mut R,
+        mut reader: R,
         volume: &VolumeDescriptor,
     ) -> Result<Option<DirectoryEntry>, Error> {
         let subtree_left = reader.read_u16::<LE>()?;
@@ -103,7 +103,7 @@ impl DirectoryEntry {
         let name_length = reader.read_u8()?;
 
         let mut name = vec![0_u8; name_length as usize];
-        reader.take(name_length as u64).read(&mut name)?;
+        reader.by_ref().take(name_length as u64).read(&mut name)?;
         let name = String::from_utf8_lossy(&name).into_owned();
 
         let alignment_mismatch = ((4 - reader.stream_position()? % 4) % 4) as i64;
@@ -112,7 +112,7 @@ impl DirectoryEntry {
         let is_directory = attributes.contains(DirectoryEntryAttributes::DIRECTORY);
         let subdirectory = if is_directory {
             let reader_position = reader.stream_position()?;
-            let subdir = DirectoryTable::read(reader, &volume, sector, size)?;
+            let subdir = DirectoryTable::read(&mut reader, &volume, sector, size)?;
             reader.seek(SeekFrom::Start(reader_position))?;
             Some(subdir)
         } else {

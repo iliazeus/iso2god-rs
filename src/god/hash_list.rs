@@ -46,7 +46,7 @@ impl HashList {
         Sha1::digest(&self.buffer).into()
     }
 
-    pub fn write<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+    pub fn write<W: Write>(&self, mut writer: W) -> Result<(), Error> {
         writer.write_all(&self.buffer)?;
         Ok(())
     }
