@@ -28,6 +28,7 @@ impl HashList {
         let len = buffer
             .chunks(20)
             .position(|c| *c == [0u8; 20])
+            .map(|p| p * 20)
             .unwrap_or(buffer.len());
 
         Ok(HashList { buffer, len })
