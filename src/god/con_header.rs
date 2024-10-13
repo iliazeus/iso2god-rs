@@ -48,10 +48,9 @@ impl ConHeaderBuilder {
     }
 
     fn write_utf16_be(&mut self, offset: usize, s: &str) {
-        for (i, c) in s.encode_utf16().enumerate() {
-            self.write_u16_be(offset + i, c);
+        for (i, c) in s.encode_utf16().chain([0]).enumerate() {
+            self.write_u16_be(offset + i * 2, c);
         }
-        self.write_u16_be(offset + s.len(), 0);
     }
 
     pub fn with_block_counts(mut self, blocks_allocated: u32, blocks_not_allocated: u16) -> Self {
@@ -78,7 +77,7 @@ impl ConHeaderBuilder {
         self.write_u8(0x0364, exe_info.platform);
         self.write_u8(0x0365, exe_info.executable_type);
         self.write_u8(0x0366, exe_info.disc_number);
-        self.write_u8(0x0376, exe_info.disc_count);
+        self.write_u8(0x0367, exe_info.disc_count);
         self
     }
 
