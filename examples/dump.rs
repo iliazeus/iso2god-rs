@@ -24,7 +24,7 @@ fn main() -> Result<(), Error> {
 
     let fs = input
         .narrow(iso.data_volume_offset()..)
-        .read::<gdfx::Fs>()?;
+        .read::<gdfx::FileSystem>()?;
 
     let mut files = Vec::new();
     gdfx::walk(input.by_ref(), fs.root_dir, |path, entry| {

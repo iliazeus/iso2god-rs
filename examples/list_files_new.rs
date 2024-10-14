@@ -20,7 +20,7 @@ fn main() -> Result<(), Error> {
     let iso = iso_input.read::<iso2god::Iso>()?;
 
     let mut fs_input = iso_input.slice(iso.data_volume_offset()..);
-    let fs = fs_input.read::<iso2god::gdfx::Fs>()?;
+    let fs = fs_input.read::<iso2god::gdfx::FileSystem>()?;
 
     let root_dir = fs_input
         .by_ref()

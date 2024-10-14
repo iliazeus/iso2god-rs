@@ -21,7 +21,7 @@ fn main() -> Result<(), Error> {
 
     let fs = input
         .narrow(iso.data_volume_offset()..)
-        .read::<gdfx::Fs>()?;
+        .read::<gdfx::FileSystem>()?;
 
     let root_dir = input
         .by_ref()
@@ -31,7 +31,7 @@ fn main() -> Result<(), Error> {
     let nxeart = root_dir
         .into_iter()
         .find(|e| e.name().eq_ignore_ascii_case(b"nxeart"))
-        .map(|e| input.narrow(e.data.bytes()).read::<stfs::Metadata>())
+        .map(|e| input.narrow(e.data.bytes()).read::<stfs::Package>())
         .context("nxeart not found")??;
 
     println!("{nxeart:?}");

@@ -31,7 +31,7 @@ impl Extent {
 }
 
 #[derive(Debug, Clone)]
-pub struct Fs {
+pub struct FileSystem {
     pub root_dir: Extent,
     pub creation_time: u64,
 }
@@ -66,7 +66,7 @@ impl DirEntry {
     }
 }
 
-impl<R: Read + Seek> ReadFromSlice<R> for Fs {
+impl<R: Read + Seek> ReadFromSlice<R> for FileSystem {
     type Error = std::io::Error;
     fn read_from_slice(rs: &mut ReadSlice<R>) -> Result<Self, Self::Error> {
         let r = rs
