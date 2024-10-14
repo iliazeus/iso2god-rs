@@ -47,10 +47,13 @@ impl IsoType {
 
     fn check<R: Read + Seek>(mut reader: R, iso_type: IsoType) -> Result<bool, Error> {
         let mut buf = [0_u8; 20];
-
-        reader.seek(SeekFrom::Start(0x20 * SECTOR_SIZE + iso_type.root_offset()))?;
-        reader.read_exact(&mut buf)?;
-
-        Ok(buf == "MICROSOFT*XBOX*MEDIA".as_bytes())
+        match reader
+            .seek(SeekFrom::Start(0x20 * SECTOR_SIZE + iso_type.root_offset()))
+            .and_then(|_| reader.read_exact(&mut buf))
+        {
+            Ok(_) => Ok(&buf == b"MICROSOFT*XBOX*MEDIA"),
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => Ok(false),
+            Err(e) => Err(e.into()),
+        }
     }
 }
