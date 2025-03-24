@@ -9,6 +9,12 @@ pub struct HashList {
     len: usize,
 }
 
+impl Default for HashList {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HashList {
     pub fn bytes(&self) -> &[u8; 4096] {
         &self.buffer
@@ -44,7 +50,7 @@ impl HashList {
     }
 
     pub fn digest(&self) -> [u8; 20] {
-        Sha1::digest(&self.buffer).into()
+        Sha1::digest(self.buffer).into()
     }
 
     pub fn write<W: Write>(&self, mut writer: W) -> Result<(), Error> {

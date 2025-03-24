@@ -37,10 +37,10 @@ pub fn write_part<R: Read + Seek, W: Write + Seek>(
     for _subpart_index in 0..SUBPARTS_PER_PART {
         data_volume
             .by_ref()
-            .take(SUBPART_SIZE as u64)
+            .take(SUBPART_SIZE)
             .read_to_end(&mut subpart_buf)?;
 
-        if subpart_buf.len() == 0 {
+        if subpart_buf.is_empty() {
             break;
         }
 
@@ -56,10 +56,7 @@ pub fn write_part<R: Read + Seek, W: Write + Seek>(
         // using io::copy here to benefit from potential reflink optimizations
         // https://doc.rust-lang.org/std/io/fn.copy.html#platform-specific-behavior
         data_volume.seek_relative(0 - subpart_buf.len() as i64)?;
-        std::io::copy(
-            &mut data_volume.by_ref().take(SUBPART_SIZE as u64),
-            &mut part_file,
-        )?;
+        std::io::copy(&mut data_volume.by_ref().take(SUBPART_SIZE), &mut part_file)?;
 
         if subpart_buf.len() < SUBPART_SIZE as usize {
             break;

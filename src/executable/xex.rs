@@ -1,12 +1,12 @@
 use std::io::{Read, Seek, SeekFrom};
 
-use byteorder::{ReadBytesExt, BE};
+use byteorder::{BE, ReadBytesExt};
 
 use bitflags::bitflags;
 use num_enum::TryFromPrimitive;
 
 use crate::executable::TitleExecutionInfo;
-use anyhow::{bail, Error};
+use anyhow::{Error, bail};
 
 #[derive(Clone, Debug)]
 pub struct XexHeader {
@@ -118,15 +118,11 @@ impl XexHeader {
             let key = XexHeaderFieldId::try_from(key).ok();
             type Key = XexHeaderFieldId;
 
-            match key {
-                Some(Key::ExecutionId) => {
-                    let offset = reader.stream_position()?;
-                    reader.seek(SeekFrom::Start(header_offset + (value as u64)))?;
-                    fields.execution_info = Some(TitleExecutionInfo::from_xex(&mut reader)?);
-                    reader.seek(SeekFrom::Start(offset))?;
-                }
-
-                _ => {}
+            if let Some(Key::ExecutionId) = key {
+                let offset = reader.stream_position()?;
+                reader.seek(SeekFrom::Start(header_offset + (value as u64)))?;
+                fields.execution_info = Some(TitleExecutionInfo::from_xex(&mut reader)?);
+                reader.seek(SeekFrom::Start(offset))?;
             };
         }
 

@@ -1,4 +1,4 @@
-use byteorder::{ByteOrder, BE, LE};
+use byteorder::{BE, ByteOrder, LE};
 
 use sha1::{Digest, Sha1};
 
@@ -14,6 +14,12 @@ pub struct ConHeaderBuilder {
 pub enum ContentType {
     GamesOnDemand = 0x7000,
     XboxOriginal = 0x5000,
+}
+
+impl Default for ConHeaderBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ConHeaderBuilder {

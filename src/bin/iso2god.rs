@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Error};
 
-use clap::{arg, command, Parser};
+use clap::{Parser, arg, command};
 
 use rayon::prelude::*;
 
@@ -51,7 +51,9 @@ fn main() -> Result<(), Error> {
 
     #[allow(deprecated)]
     if args.offline {
-        eprintln!("the --offline flag is deprecated: the tool now has a built-in title database, so it is always offline");
+        eprintln!(
+            "the --offline flag is deprecated: the tool now has a built-in title database, so it is always offline"
+        );
     }
 
     rayon::ThreadPoolBuilder::new()
@@ -97,7 +99,7 @@ fn main() -> Result<(), Error> {
         source_iso_file_meta.len() - root_offset
     };
 
-    let block_count = data_size.div_ceil(god::BLOCK_SIZE as u64);
+    let block_count = data_size.div_ceil(god::BLOCK_SIZE);
     let part_count = block_count.div_ceil(god::BLOCKS_PER_PART);
 
     let file_layout = god::FileLayout::new(&args.dest_dir, &exe_info, content_type);
@@ -160,7 +162,7 @@ fn main() -> Result<(), Error> {
         .with_block_counts(block_count as u32, 0)
         .with_data_parts_info(
             part_count as u32,
-            last_part_size + (part_count - 1) * (god::BLOCK_SIZE as u64) * 0xa290,
+            last_part_size + (part_count - 1) * god::BLOCK_SIZE * 0xa290,
         )
         .with_content_type(content_type)
         .with_mht_hash(&mht.digest());

@@ -1,6 +1,6 @@
 use crate::executable::TitleExecutionInfo;
-use anyhow::{bail, Error};
-use byteorder::{ReadBytesExt, LE};
+use anyhow::{Error, bail};
+use byteorder::{LE, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
 
 pub struct XbeHeader {
@@ -31,13 +31,12 @@ impl XbeHeader {
         let cert_address = dw_certificate_addr - dw_base_addr;
         reader.seek(SeekFrom::Start(offset + (cert_address as u64)))?;
 
-        let mut fields: XbeHeaderFields = Default::default();
-        fields.execution_info = Some(TitleExecutionInfo::from_xbe(reader)?);
-
         Ok(XbeHeader {
             dw_base_addr,
             dw_certificate_addr,
-            fields,
+            fields: XbeHeaderFields {
+                execution_info: Some(TitleExecutionInfo::from_xbe(reader)?),
+            },
         })
     }
 

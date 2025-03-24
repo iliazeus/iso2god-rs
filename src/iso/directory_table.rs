@@ -1,4 +1,4 @@
-use byteorder::{ReadBytesExt, LE};
+use byteorder::{LE, ReadBytesExt};
 
 use std::io::{Read, Seek, SeekFrom};
 
@@ -103,7 +103,7 @@ impl DirectoryEntry {
         let name_length = reader.read_u8()?;
 
         let mut name = vec![0_u8; name_length as usize];
-        reader.by_ref().take(name_length as u64).read(&mut name)?;
+        reader.read_exact(&mut name)?;
         let name = String::from_utf8_lossy(&name).into_owned();
 
         let alignment_mismatch = ((4 - reader.stream_position()? % 4) % 4) as i64;
@@ -112,7 +112,7 @@ impl DirectoryEntry {
         let is_directory = attributes.contains(DirectoryEntryAttributes::DIRECTORY);
         let subdirectory = if is_directory {
             let reader_position = reader.stream_position()?;
-            let subdir = DirectoryTable::read(reader, &volume, sector, size)?;
+            let subdir = DirectoryTable::read(reader, volume, sector, size)?;
             reader.seek(SeekFrom::Start(reader_position))?;
             Some(subdir)
         } else {

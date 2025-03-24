@@ -1,5 +1,5 @@
 use anyhow::{Context, Error};
-use clap::{command, Parser};
+use clap::{Parser, command};
 
 use iso2god::game_list;
 

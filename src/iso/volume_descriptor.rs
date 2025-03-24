@@ -1,8 +1,8 @@
-use byteorder::{ReadBytesExt, LE};
+use byteorder::{LE, ReadBytesExt};
 
 use std::io::{Read, Seek, SeekFrom};
 
-use anyhow::{format_err, Error};
+use anyhow::{Error, format_err};
 
 use super::iso_type::*;
 use super::*;
@@ -43,7 +43,7 @@ impl VolumeDescriptor {
         reader.read_exact(&mut image_creation_time)?;
 
         let reader_len = {
-            let cur = reader.seek(SeekFrom::Current(0))?;
+            let cur = reader.stream_position()?;
             let end = reader.seek(SeekFrom::End(0))?;
             reader.seek(SeekFrom::Start(cur))?;
             end

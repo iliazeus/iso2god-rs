@@ -1,7 +1,7 @@
 use crate::god::ContentType;
 use crate::iso::IsoReader;
-use anyhow::{bail, Context, Error};
-use byteorder::{ReadBytesExt, BE, LE};
+use anyhow::{Context, Error, bail};
+use byteorder::{BE, LE, ReadBytesExt};
 use std::io::{Read, Seek, SeekFrom};
 
 pub mod xbe;
