@@ -3,24 +3,24 @@ name = "iso2god"
 version = "1.7.0"
 description = "A tool to convert between Xbox 360 ISO and Games On Demand file formats"
 repository = "https://github.com/iliazeus/iso2god-rs"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = { version = "1.0.89", features = ["backtrace"] }
-bitflags = "2.6.0"
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+bitflags = "2.9.0"
 byteorder = "1.5.0"
-clap = { version = "4.5.19", features = ["derive"] }
+clap = { version = "4.5.32", features = ["derive"] }
 num_enum = "0.7.3"
 rayon = "1.10.0"
 sha1 = "0.10.6"
 
 [dev-dependencies]
-reqwest = { version = "0.12.8", features = ["blocking", "json"] }
-serde = { version = "1.0.210", features = ["derive"] }
-serde-aux = "4.5.0"
-serde_json = "1.0.128"
+reqwest = { version = "0.12.15", features = ["blocking", "json"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde-aux = "4.6.0"
+serde_json = "1.0.140"
 
 [profile.release]
 strip = true
