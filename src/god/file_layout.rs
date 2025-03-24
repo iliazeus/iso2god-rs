@@ -33,7 +33,7 @@ impl<'a> FileLayout<'a> {
 
     fn media_id_string(&self) -> String {
         match self.content_type {
-            ContentType::GamesOnDemand => {
+            ContentType::GamesOnDemand | ContentType::InstalledGame => {
                 format!("{:08X}", self.exe_info.media_id)
             }
             ContentType::XboxOriginal => {

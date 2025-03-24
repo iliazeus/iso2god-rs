@@ -14,6 +14,7 @@ pub struct ConHeaderBuilder {
 pub enum ContentType {
     GamesOnDemand = 0x7000,
     XboxOriginal = 0x5000,
+    InstalledGame = 0x4000,
 }
 
 impl Default for ConHeaderBuilder {
@@ -109,13 +110,42 @@ impl ConHeaderBuilder {
         self
     }
 
-    pub fn finalize(mut self) -> Vec<u8> {
-        self.buffer[0x035b] = 0;
-        self.buffer[0x035f] = 0;
+    pub fn with_device_id(mut self, device_id: &[u8; 20]) -> Self {
+        self.write_bytes(0x03fd, device_id);
+        self
+    }
+
+    pub fn finalize_with_fake_signature(mut self) -> Vec<u8> {
+        self.write_u32_be(0x0000, 0x4C495645); // 'LIVE'
+
+        self.buffer[0x035b] = 0; // version
+        self.buffer[0x035f] = 0; // base version
         self.buffer[0x0391] = 0;
 
+        // digest = SVOD header start at 0x344 - eof
         let digest: [u8; 20] = Sha1::digest(&self.buffer[0x0344..(0x0344 + 0xacbc)]).into();
         self.write_bytes(0x032c, &digest);
+
+        self.buffer
+    }
+
+    pub fn finalize_with_console_cert(mut self, device_certificate: &[u8; 0x1A8], private_key: &[u8; 0x1D0]) -> Vec<u8> {
+        self.write_u32_be(0x0000, 0x434F4E20); // 'CON '
+
+        self.write_bytes(0x0004, device_certificate);
+
+        self.buffer[0x035b] = 0; // version
+        self.buffer[0x035f] = 0; // base version
+        self.buffer[0x0391] = 0;
+
+        // digest = SVOD header start at 0x344 - eof
+        let digest: [u8; 20] = Sha1::digest(&self.buffer[0x0344..(0x0344 + 0xacbc)]).into();
+        self.write_bytes(0x032c, &digest);
+
+        // signature digest = licence table - SVOD header start
+        let digest_to_sign: [u8; 20] = Sha1::digest(&self.buffer[0x22C..(0x22C + 0x114)]).into();
+
+        // TODO: Sign
 
         self.buffer
     }

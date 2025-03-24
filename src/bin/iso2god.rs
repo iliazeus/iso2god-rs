@@ -85,6 +85,7 @@ fn main() -> Result<(), Error> {
         match content_type {
             ContentType::GamesOnDemand => println!("    Type: Games on Demand"),
             ContentType::XboxOriginal => println!("    Type: Xbox Original"),
+            ContentType::InstalledGame => println!("    Type: NXE Installed Game"),
         }
     }
 
@@ -174,7 +175,7 @@ fn main() -> Result<(), Error> {
         con_header = con_header.with_game_title(&game_title);
     }
 
-    let con_header = con_header.finalize();
+    let con_header = con_header.finalize_with_fake_signature();
 
     let mut con_header_file = File::options()
         .write(true)
