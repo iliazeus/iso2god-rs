@@ -98,6 +98,11 @@ impl DirectoryEntry {
         let sector = reader.read_u32::<LE>()?;
         let size = reader.read_u32::<LE>()?;
 
+        // This entry is empty
+        if size == 0 {
+            return Ok(None);
+        }
+
         let attributes = DirectoryEntryAttributes::from_bits_truncate(reader.read_u8()?);
 
         let name_length = reader.read_u8()?;
