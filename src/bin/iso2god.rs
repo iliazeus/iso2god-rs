@@ -1,4 +1,4 @@
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{BufReader, BufWriter, Seek, SeekFrom, Write};
 
 use std::fs;
 use std::fs::File;
@@ -63,6 +63,7 @@ fn main() -> Result<(), Error> {
     println!("extracting ISO metadata");
 
     let source_iso_file = File::open(&args.source_iso).context("error opening source ISO file")?;
+    let source_iso_file = BufReader::new(source_iso_file);
 
     let source_iso_file_meta =
         fs::metadata(&args.source_iso).context("error reading source ISO file metadata")?;
@@ -113,7 +114,8 @@ fn main() -> Result<(), Error> {
     let progress = AtomicUsize::new(0);
 
     (0..part_count).into_par_iter().try_for_each(|part_index| {
-        let mut iso_data_volume = File::open(&args.source_iso)?;
+        let iso_data_volume = File::open(&args.source_iso)?;
+        let mut iso_data_volume = BufReader::new(iso_data_volume);
         iso_data_volume.seek(SeekFrom::Start(source_iso.volume_descriptor.root_offset))?;
 
         let part_file = file_layout.part_file_path(part_index);
@@ -124,6 +126,7 @@ fn main() -> Result<(), Error> {
             .truncate(true)
             .open(&part_file)
             .context("error creating part file")?;
+        let part_file = BufWriter::new(part_file);
 
         god::write_part(iso_data_volume, part_index, part_file)
             .context("error writing part file")?;
@@ -176,12 +179,13 @@ fn main() -> Result<(), Error> {
 
     let con_header = con_header.finalize();
 
-    let mut con_header_file = File::options()
+    let con_header_file = File::options()
         .write(true)
         .create(true)
         .truncate(true)
         .open(file_layout.con_header_file_path())
         .context("cannot open con header file")?;
+    let mut con_header_file = BufWriter::new(con_header_file);
 
     con_header_file
         .write_all(&con_header)
@@ -202,7 +206,8 @@ fn ensure_empty_dir(path: &Path) -> Result<(), Error> {
 
 fn read_part_mht(file_layout: &god::FileLayout, part_index: u64) -> Result<god::HashList, Error> {
     let part_file = file_layout.part_file_path(part_index);
-    let mut part_file = File::options().read(true).open(part_file)?;
+    let part_file = File::options().read(true).open(part_file)?;
+    let mut part_file = BufReader::new(part_file);
     god::HashList::read(&mut part_file)
 }
 
@@ -212,7 +217,8 @@ fn write_part_mht(
     mht: &god::HashList,
 ) -> Result<(), Error> {
     let part_file = file_layout.part_file_path(part_index);
-    let mut part_file = File::options().write(true).open(part_file)?;
+    let part_file = File::options().write(true).open(part_file)?;
+    let mut part_file = BufWriter::new(part_file);
     mht.write(&mut part_file)?;
     Ok(())
 }
