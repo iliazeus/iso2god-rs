@@ -25,6 +25,12 @@ jobs:
             build_filename: iso2god
             release_filename: iso2god-x86_64-linux
 
+          - runner: ubuntu-24.04-arm
+            rust: 1.85.1
+            target: aarch64-unknown-linux-gnu
+            build_filename: iso2god
+            release_filename: iso2god-aarch64-linux
+
           - runner: macos-13
             rust: 1.85.1
             target: x86_64-apple-darwin
