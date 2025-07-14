@@ -1,7 +1,7 @@
 use crate::god::ContentType;
-use crate::iso::IsoReader;
 use anyhow::{Context, Error, bail};
 use byteorder::{BE, LE, ReadBytesExt};
+use xdvdfs::{blockdev::BlockDeviceRead, layout::VolumeDescriptor};
 use std::io::{Read, Seek, SeekFrom};
 
 pub mod xbe;
@@ -59,10 +59,14 @@ impl TitleExecutionInfo {
 }
 
 impl TitleInfo {
-    pub fn from_image<R: Read + Seek>(iso_image: &mut IsoReader<R>) -> Result<TitleInfo, Error> {
-        if let Some(mut executable) = iso_image.get_entry(&"\\default.xex".into())? {
+    pub fn from_image<R: BlockDeviceRead<E> + Seek, E: std::fmt::Debug>(xiso: &mut R, volume: VolumeDescriptor) -> Result<TitleInfo, Error> {
+        if let Ok(direntnode) = volume.root_table.walk_path(xiso, &"Default.xex") {
+
+            let mut data = direntnode.node.dirent.read_data_all(xiso).unwrap();
+            let mut data_slice = std::io::Cursor::new(data.as_mut());
+
             let default_xex_header =
-                xex::XexHeader::read(&mut executable).context("error reading default.xex")?;
+                xex::XexHeader::read(&mut data_slice).context("error reading default.xex")?;
             let execution_info = default_xex_header
                 .fields
                 .execution_info
@@ -72,9 +76,11 @@ impl TitleInfo {
                 content_type: ContentType::GamesOnDemand,
                 execution_info,
             })
-        } else if let Some(mut executable) = iso_image.get_entry(&"\\default.xbe".into())? {
+        } else if let Ok(direntnode) = volume.root_table.walk_path(xiso, &"default.xbe") {
+            let mut data = direntnode.node.dirent.read_data_all(xiso).unwrap();
+            let mut data_slice = std::io::Cursor::new(data.as_mut());
             let default_xbe_header =
-                xbe::XbeHeader::read(&mut executable).context("error reading default.xbe")?;
+                xbe::XbeHeader::read(&mut data_slice).context("error reading default.xbe")?;
             let execution_info = default_xbe_header
                 .fields
                 .execution_info
