@@ -119,12 +119,15 @@ fn main() -> Result<(), Error> {
     };
 
     let data_size = if args.trim.unwrap_or_default() == TrimMode::FromEnd {
-        // this is probably wrong because it's not taking into account the dirent table locations themselves
-        // but it matches the previous implementation, so at least it's not worse
         volume.root_table.file_tree(&mut xiso)
             .context("error walking root directory tree")?
             .iter()
-            .map(|dirent| dirent.1.node.dirent.data.offset::<std::io::Error>(0).unwrap() + dirent.1.node.dirent.data.size() as u64)
+            .map(|dirent| {
+                if dirent.1.node.dirent.data.is_empty() {
+                    return 0;
+                }
+                return dirent.1.node.dirent.data.offset::<std::io::Error>(0).unwrap() + dirent.1.node.dirent.data.size() as u64
+                })
             .max()
             .unwrap_or(0)
     } else {
