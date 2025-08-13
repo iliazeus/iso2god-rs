@@ -13,7 +13,7 @@ use rayon::prelude::*;
 
 use iso2god::executable::TitleInfo;
 use iso2god::god::ContentType;
-use iso2god::{game_list, god, iso};
+use iso2god::{game_list, god};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -80,16 +80,17 @@ fn main() -> Result<(), Error> {
 
     println!("extracting ISO metadata");
 
-    let source_iso_file = File::open(&args.source_iso).context("error opening source ISO file")?;
-
     let source_iso_file_meta =
         fs::metadata(&args.source_iso).context("error reading source ISO file metadata")?;
 
-    let mut source_iso =
-        iso::IsoReader::read(source_iso_file).context("error reading source ISO")?;
+    let img = File::options().read(true).open(&args.source_iso)?;
+    let xiso = std::io::BufReader::new(img);
+    let mut xiso = xdvdfs::blockdev::OffsetWrapper::new(xiso).unwrap();
+    
+    let volume = xdvdfs::read::read_volume(&mut xiso).unwrap();
 
     let title_info =
-        TitleInfo::from_image(&mut source_iso).context("error reading image executable")?;
+        TitleInfo::from_image(&mut xiso, volume.clone()).context("error reading image executable")?;
 
     let exe_info = title_info.execution_info;
     let content_type = title_info.content_type;
@@ -110,10 +111,26 @@ fn main() -> Result<(), Error> {
         return Ok(());
     }
 
+    let root_offset = {
+        // this is a workaround that leeks the offset implementation detail from xdvdfs which we need
+        // to use the current god creation code which doesn't use the xdvdfs::blockdev::BlockDeviceRead trait
+        xiso.seek(SeekFrom::Start(0))?;
+        xiso.get_mut().stream_position().unwrap()
+    };
+
     let data_size = if args.trim.unwrap_or_default() == TrimMode::FromEnd {
-        source_iso.get_max_used_prefix_size()
+        volume.root_table.file_tree(&mut xiso)
+            .context("error walking root directory tree")?
+            .iter()
+            .map(|dirent| {
+                if dirent.1.node.dirent.data.is_empty() {
+                    return 0;
+                }
+                return dirent.1.node.dirent.data.offset::<std::io::Error>(0).unwrap() + dirent.1.node.dirent.data.size() as u64
+                })
+            .max()
+            .unwrap_or(0)
     } else {
-        let root_offset = source_iso.volume_descriptor.root_offset;
         source_iso_file_meta.len() - root_offset
     };
 
@@ -132,7 +149,7 @@ fn main() -> Result<(), Error> {
 
     (0..part_count).into_par_iter().try_for_each(|part_index| {
         let mut iso_data_volume = File::open(&args.source_iso)?;
-        iso_data_volume.seek(SeekFrom::Start(source_iso.volume_descriptor.root_offset))?;
+        iso_data_volume.seek(SeekFrom::Start(root_offset))?;
 
         let part_file = file_layout.part_file_path(part_index);
 
